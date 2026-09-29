@@ -14,7 +14,7 @@ Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, GSAP 3 and TradingV
 | **Stock pages** | Area/candle chart with SMA 20/50/200 and volume, key stats, 52-week range, historical volatility and expected move, TTM financials with quarterly bars, dividends & splits, news with per-ticker AI sentiment. |
 | **Option chains** | Every expiration and strike with price, IV, Δ Γ Θ V, probability ITM and breakevens. Live mode (bid/ask, volume, OI, max pain, put/call) on a Massive Options plan; a clearly-labelled Black-Scholes model chain otherwise. |
 | **Strategy builder** | Click contracts or use presets (straddle, strangle, spreads, iron condor, cash-secured put). Payoff at expiry / today / halfway, breakevens, max profit & loss, probability of profit, position greeks. |
-| **Simulator** | Lump sum or monthly DCA, dividends reinvested or taken as cash, split-adjusted, benchmarked vs S&P 500 or Nasdaq. CAGR / IRR, max drawdown, volatility, Sharpe, best & worst day, calendar-year returns. Shareable URLs. |
+| **Simulator** | An animated replay of your money's journey (hover or drag to travel through time) with the key moments marked: worst drop, recovery, doubling. Compares the same dollars in an index fund, a savings account (historical T-bill rates) and cash, adjusts for inflation, explains everything in plain English, and shows how much the start date mattered. Lump sum or monthly, dividends reinvested, split-adjusted, shareable URLs. |
 | **Scanner** | Filter the entire market by price, % change, gap, volume, dollar volume (and RVOL / 5D / 20D on paid plans). Presets for gainers, losers, gaps, penny runners, unusual volume. |
 
 ## Quick start

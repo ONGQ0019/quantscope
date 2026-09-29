@@ -186,4 +186,23 @@ export function getPrevDay(ticker: string) {
   }).then((r) => r.results?.[0] ?? null);
 }
 
+/** Daily 3-month T-bill yields (decimal) covering the plan's history window. */
+export async function getTreasuryHistory(): Promise<{ date: string; rate: number }[]> {
+  const from = addDays(nyToday(), -Math.round(HISTORY_YEARS * 365.25) - 30);
+  const rows = await massiveGetAll<{ date: string; yield_3_month?: number }>(
+    `/fed/v1/treasury-yields?date.gte=${from}&sort=date.asc&limit=5000`,
+    { ttl: 12 * HOUR, maxPages: 6 },
+  );
+  return rows.filter((r) => r.yield_3_month != null).map((r) => ({ date: r.date, rate: r.yield_3_month! / 100 }));
+}
+
+/** Monthly CPI (all items). */
+export async function getCpi(): Promise<{ month: string; value: number }[]> {
+  const rows = await massiveGetAll<{ date: string; cpi?: number }>(`/fed/v1/inflation?sort=date.desc&limit=1000`, {
+    ttl: DAY,
+    maxPages: 1,
+  });
+  return rows.filter((r) => r.cpi != null).map((r) => ({ month: r.date.slice(0, 7), value: r.cpi! }));
+}
+
 export { isoDate };

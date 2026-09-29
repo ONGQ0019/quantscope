@@ -1,31 +1,42 @@
 "use client";
 
 import clsx from "clsx";
-import { Lock, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Link2, Lock, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { addDays, addMonths, nyToday } from "@/lib/dates";
-import { fmtDate, fmtPct, fmtPrice, fmtUsd } from "@/lib/format";
-import { gsap, prefersReducedMotion, useGSAP } from "@/lib/client/gsap";
+import { fmtDate, fmtPct, fmtPrice, fmtUsd, friendlyName, sentenceName } from "@/lib/format";
+import type { SimResult } from "@/lib/quant/simulate";
 import type { SimulationResponse } from "@/lib/server/simulate";
-import { AnimatedNumber } from "../ui/AnimatedNumber";
 import { Panel } from "../ui/Panel";
 import { Reveal } from "../ui/Reveal";
 import { Segmented } from "../ui/Segmented";
 import { Skeleton } from "../ui/Skeleton";
 import { ErrorState } from "../ui/States";
 import { TickerLogo } from "../ui/TickerLogo";
-import { DrawdownChart, GrowthChart } from "./SimCharts";
+import { Journey } from "./Journey";
+import { HardestMoment, PlainStats } from "./PlainStats";
+import { DrawdownChart } from "./SimCharts";
+import { Stackup } from "./Stackup";
+import { TimingLuck } from "./TimingLuck";
+import { YearByYear } from "./YearByYear";
 
 type Status = { historyYears: number };
 const PERIODS = [
-  { value: "6M", months: 6 },
-  { value: "1Y", months: 12 },
-  { value: "2Y", months: 24 },
-  { value: "5Y", months: 60 },
-  { value: "10Y", months: 120 },
-  { value: "20Y", months: 240 },
+  { value: "6M", months: 6, label: "6 months" },
+  { value: "1Y", months: 12, label: "1 year" },
+  { value: "2Y", months: 24, label: "2 years" },
+  { value: "5Y", months: 60, label: "5 years" },
+  { value: "10Y", months: 120, label: "10 years" },
+  { value: "20Y", months: 240, label: "20 years" },
 ] as const;
+
+const EXAMPLES = [
+  { label: "$10,000 in Nvidia", t: "NVDA", initial: 10_000, monthly: 0, period: "2Y" },
+  { label: "$1,000 in Apple", t: "AAPL", initial: 1_000, monthly: 0, period: "2Y" },
+  { label: "$200 a month in the S&P 500", t: "SPY", initial: 0, monthly: 200, period: "2Y" },
+  { label: "$5,000 in Tesla a year ago", t: "TSLA", initial: 5_000, monthly: 0, period: "1Y" },
+];
 
 function readParams() {
   if (typeof window === "undefined") return null;
@@ -44,6 +55,7 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
   const [customStart, setCustomStart] = useState<string | null>(null);
   const [reinvest, setReinvest] = useState(true);
   const [benchmark, setBenchmark] = useState("SPY");
+  const [copied, setCopied] = useState(false);
 
   // Hydrate from a shared URL once, before we start writing the URL back.
   const [hydrated, setHydrated] = useState(false);
@@ -97,27 +109,59 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
 
   const r = data?.result ?? null;
   const b = data?.benchmarkResult ?? null;
+  const name = data ? friendlyName(data.ticker, data.name) : ticker;
+  const subject = data ? sentenceName(data.ticker, data.name) : ticker;
+  const benchLabel = data?.benchmark ? friendlyName(data.benchmark, data.benchmarkName) : null;
+  const replayKey = data && r ? `${data.ticker}|${r.startDate}|${r.contributions > 0}|${data.benchmark}` : "";
+
+  const applyExample = (e: (typeof EXAMPLES)[number]) => {
+    setTicker(e.t);
+    setInitial(e.initial);
+    setMonthly(e.monthly);
+    setCustomStart(null);
+    setPeriod(e.period);
+    setBenchmark(e.t === "SPY" ? "QQQ" : "SPY");
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {}
+  };
 
   return (
     <div>
       {!embedded && (
         <div className="mb-8">
           <p className="label">Simulator</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-[40px]">
-            What if you had invested?
-          </h1>
-          <p className="mt-3 max-w-2xl text-muted">
-            Replay any stock or ETF with real prices, split-adjusted dividends and optional monthly contributions — then compare against the market.
+          <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-[40px]">What if you had invested?</h1>
+          <p className="mt-2 max-w-2xl text-muted">
+            Pick a stock, an amount and a start date. We&apos;ll replay what would have happened to your money, day by day, using real prices and dividends.
           </p>
         </div>
       )}
 
-      <Reveal className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]" deps={[Boolean(r)]}>
-        <Panel title="Scenario" className="lg:sticky lg:top-24 lg:self-start">
+      <Reveal className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]" deps={[Boolean(r), Boolean(data?.timing)]}>
+        <Panel title="Your scenario" className="lg:sticky lg:top-20 lg:self-start">
           <div className="space-y-5">
+            {!embedded && (
+              <div>
+                <p className="label mb-2">Try an example</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {EXAMPLES.map((e) => (
+                    <button key={e.label} onClick={() => applyExample(e)} className="chip transition-colors hover:border-line-strong hover:text-ink">
+                      {e.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {!embedded && <TickerPicker value={ticker} onChange={setTicker} />}
 
-            <Field label="Initial investment">
+            <Field label="Starting amount">
               <MoneyInput value={initial} onChange={setInitial} />
               <div className="mt-2 flex gap-1.5">
                 {[1_000, 10_000, 100_000].map((v) => (
@@ -128,20 +172,24 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
               </div>
             </Field>
 
-            <Field label="Monthly contribution">
+            <Field label="Add money every month?">
               <Segmented<string>
-                value={monthly > 0 ? "dca" : "lump"}
+                value={monthly > 0 ? "dca" : "once"}
                 onChange={(v) => setMonthly(v === "dca" ? monthly || 500 : 0)}
                 options={[
-                  { value: "lump", label: "Lump sum" },
-                  { value: "dca", label: "Monthly DCA" },
+                  { value: "once", label: "No, one time" },
+                  { value: "dca", label: "Yes, monthly" },
                 ]}
-                className="mb-2 w-full [&>button]:flex-1"
+                className="w-full [&>button]:flex-1"
               />
-              {monthly > 0 && <MoneyInput value={monthly} onChange={setMonthly} suffix="/ month" />}
+              {monthly > 0 && (
+                <div className="mt-2">
+                  <MoneyInput value={monthly} onChange={setMonthly} suffix="per month" />
+                </div>
+              )}
             </Field>
 
-            <Field label="Start">
+            <Field label="Starting from">
               <div className="grid grid-cols-3 gap-1.5">
                 {PERIODS.map((p) => {
                   const locked = p.months / 12 > historyYears + 0.01;
@@ -156,13 +204,13 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
                         setPeriod(p.value);
                       }}
                       className={clsx(
-                        "flex items-center justify-center gap-1 rounded-lg border py-1.5 text-xs transition-colors",
+                        "flex h-8 items-center justify-center gap-1 rounded-lg border text-xs transition-colors",
                         active ? "border-ink bg-ink text-bg" : "border-line text-muted hover:bg-subtle hover:text-ink",
-                        locked && "cursor-not-allowed opacity-40 hover:text-muted",
+                        locked && "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted",
                       )}
                     >
                       {locked && <Lock className="size-3" />}
-                      {p.value} ago
+                      {p.label} ago
                     </button>
                   );
                 })}
@@ -174,37 +222,43 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
                 max={addDays(nyToday(), -7)}
                 onChange={(e) => e.target.value && setCustomStart(e.target.value)}
                 className="input num mt-2"
+                aria-label="Custom start date"
               />
             </Field>
 
-            <Field label="Dividends">
+            <Field label="Dividends" hint="Some companies pay part of their profit to shareholders. Reinvesting uses it to buy more shares.">
               <Segmented<string>
                 value={reinvest ? "1" : "0"}
                 onChange={(v) => setReinvest(v === "1")}
                 options={[
                   { value: "1", label: "Reinvest" },
-                  { value: "0", label: "Take as cash" },
+                  { value: "0", label: "Keep as cash" },
                 ]}
                 className="w-full [&>button]:flex-1"
               />
             </Field>
 
-            <Field label="Compare against">
+            <Field label="Compare with">
               <Segmented<string>
                 value={benchmark || "NONE"}
                 onChange={(v) => setBenchmark(v === "NONE" ? "" : v)}
                 options={[
                   { value: "SPY", label: "S&P 500" },
-                  { value: "QQQ", label: "Nasdaq" },
-                  { value: "NONE", label: "None" },
+                  { value: "QQQ", label: "Nasdaq 100" },
+                  { value: "NONE", label: "Nothing" },
                 ]}
                 className="w-full [&>button]:flex-1"
               />
             </Field>
-            {data && data.earliest && (
-              <p className="text-[11px] leading-relaxed text-faint">
-                History available from {fmtDate(data.earliest)} on your data plan ({data.historyYears}y).
-                {data.historyYears < 5 && " Upgrading Massive to Starter unlocks 5 years; Advanced unlocks 20+."}
+
+            <div className="flex items-center justify-between border-t border-line pt-4">
+              <button onClick={copyLink} className="flex items-center gap-1.5 text-xs text-muted hover:text-ink">
+                <Link2 className="size-3.5" /> {copied ? "Link copied" : "Copy link to this scenario"}
+              </button>
+            </div>
+            {data?.earliest && data.historyYears < 5 && (
+              <p className="-mt-2 text-[11px] leading-relaxed text-faint">
+                Your data plan covers {data.historyYears} years (from {fmtDate(data.earliest)}). Massive Starter unlocks 5 years; Advanced unlocks 20+.
               </p>
             )}
           </div>
@@ -219,35 +273,28 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
             <Panel>{data && !r ? <p className="text-sm text-muted">Not enough history in that window. Try a later start date.</p> : <ResultsSkeleton />}</Panel>
           ) : (
             <>
-              <Headline data={data!} loading={isLoading} />
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Kpi label="Total invested" value={r.totalInvested} fmt={(n) => fmtUsd(n, 0)} />
-                <Kpi label={r.annualReturnKind === "cagr" ? "CAGR" : "Annualized (IRR)"} value={r.annualReturn != null ? r.annualReturn * 100 : null} fmt={(n) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`} tone={r.annualReturn} sub={r.years < 1 ? "annualized from <1y" : undefined} />
-                <Kpi label="Max drawdown" value={r.maxDrawdown * 100} fmt={(n) => `${n.toFixed(1)}%`} tone={-1} sub={r.maxDrawdownTrough ? `bottom ${fmtDate(r.maxDrawdownTrough, { month: "short", year: "numeric" })}` : undefined} />
-                <Kpi label="Volatility" value={r.volatility != null ? r.volatility * 100 : null} fmt={(n) => `${n.toFixed(1)}%`} sub={r.sharpe != null ? `Sharpe ${r.sharpe.toFixed(2)}` : undefined} />
-                <Kpi label="Dividends received" value={r.dividendsReceived} fmt={(n) => fmtUsd(n, 0)} sub={reinvest ? "reinvested" : "held as cash"} />
-                <Kpi label="Shares owned" value={r.shares} fmt={(n) => n.toFixed(n >= 100 ? 1 : 3)} sub={`@ $${fmtPrice(r.endPrice)}`} />
-                <Kpi label="Best day" value={r.bestDay ? r.bestDay.ret * 100 : null} fmt={(n) => `+${n.toFixed(2)}%`} tone={1} sub={r.bestDay ? fmtDate(r.bestDay.date) : undefined} />
-                <Kpi label="Worst day" value={r.worstDay ? r.worstDay.ret * 100 : null} fmt={(n) => `${n.toFixed(2)}%`} tone={-1} sub={r.worstDay ? fmtDate(r.worstDay.date) : undefined} />
-              </div>
-
-              {b && <VersusBenchmark data={data!} />}
-
-              <Panel title="Portfolio value" subtitle={`${fmtDate(r.startDate)} → ${fmtDate(r.endDate)}`}>
-                <GrowthChart points={r.points} benchmark={b?.points ?? null} ticker={data!.ticker} benchmarkTicker={data!.benchmark} />
-              </Panel>
-
+              <Journey
+                name={name}
+                subject={subject}
+                benchLabel={benchLabel}
+                points={r.points}
+                bench={b?.points ?? null}
+                initial={initial}
+                monthly={monthly}
+                replayKey={replayKey}
+                loading={isLoading}
+              />
+              <Stackup data={data!} name={name} subject={subject} benchLabel={benchLabel} />
+              <PlainStats r={r} name={name} reinvest={reinvest} />
+              <HardestMoment r={r} />
               <div className="grid gap-4 xl:grid-cols-2">
-                <Panel title="Drawdowns" subtitle="Distance below the previous peak (total return)">
-                  <DrawdownChart points={r.points} />
-                </Panel>
-                <Panel title="Calendar-year returns" subtitle="Total return incl. dividends">
-                  <YearlyReturns main={r.yearly} bench={b?.yearly ?? null} ticker={data!.ticker} benchTicker={data!.benchmark} />
-                </Panel>
+                <YearByYear main={r.yearly} bench={b?.yearly ?? null} name={name} benchLabel={benchLabel} />
+                {data!.timing && <TimingLuck stats={data!.timing} name={name} historyYears={data!.historyYears} />}
               </div>
-              <p className="text-[11px] text-faint">
-                Hypothetical results using end-of-day closes, fractional shares, dividends credited on ex-date, no taxes or fees. Past performance does not
-                predict future returns.
+              <Advanced r={r} riskFree={data!.riskFree} />
+              <p className="px-1 text-[11px] leading-relaxed text-faint">
+                Hypothetical results using daily closing prices, fractional shares and dividends credited on the ex-date. No taxes or fees. The savings
+                account uses historical 3-month US Treasury bill rates. Past performance doesn&apos;t predict future returns.
               </p>
             </>
           )}
@@ -257,200 +304,63 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
   );
 }
 
-function Headline({ data, loading }: { data: SimulationResponse; loading: boolean }) {
-  const r = data.result!;
-  const ref = useRef<HTMLDivElement>(null);
-  const up = r.profit >= 0;
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.from("[data-hl]", { opacity: 0, y: 6, stagger: 0.06, duration: 0.5, ease: "power2.out" });
-    },
-    { scope: ref, dependencies: [data.ticker] },
-  );
+function Advanced({ r, riskFree }: { r: SimResult; riskFree: number }) {
+  const [open, setOpen] = useState(false);
+  const items: [string, string, string?][] = [
+    ["Share price change", fmtPct(r.priceReturn, 1), `${fmtUsd(r.startPrice)} → ${fmtUsd(r.endPrice)}`],
+    ["Total return incl. dividends", fmtPct(r.assetTotalReturn, 1)],
+    [r.annualReturnKind === "cagr" ? "Compound annual growth (CAGR)" : "Money-weighted return (IRR)", fmtPct(r.annualReturn, 2)],
+    ["Volatility (annualized)", fmtPct(r.volatility, 1, false)],
+    ["Sharpe ratio", r.sharpe != null ? r.sharpe.toFixed(2) : "—", `vs ${fmtPct(riskFree, 2, false)} risk-free`],
+    ["Best day", fmtPct(r.bestDay?.ret, 2), r.bestDay ? fmtDate(r.bestDay.date) : undefined],
+    ["Worst day", fmtPct(r.worstDay?.ret, 2), r.worstDay ? fmtDate(r.worstDay.date) : undefined],
+    ["Dividends received", fmtUsd(r.dividendsReceived, 2)],
+    ["Shares", r.shares.toFixed(4), `@ ${fmtPrice(r.endPrice)}`],
+    ["Cash held", fmtUsd(r.cash, 2)],
+  ];
   return (
-    <section ref={ref} className="card p-6 sm:p-7">
-      <div className={clsx("relative transition-opacity", loading && "opacity-60")}>
-        <div data-hl className="flex items-center gap-3">
-          <TickerLogo ticker={data.ticker} size={40} />
-          <p className="text-sm text-muted">
-            {r.contributions > 0 ? (
-              <>
-                Investing a total of {fmtUsd(r.totalInvested, 0)} in <span className="text-ink">{data.name}</span> since {fmtDate(r.startDate)} (with{" "}
-                {r.contributions} monthly contributions) would be worth
-              </>
-            ) : (
-              <>
-                {fmtUsd(r.totalInvested, 0)} invested in <span className="text-ink">{data.name}</span> on {fmtDate(r.startDate)} would be worth
-              </>
-            )}
-          </p>
-        </div>
-        <div data-hl className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-2">
-          <AnimatedNumber value={r.finalValue} from={r.totalInvested} duration={1.8} format={(n) => fmtUsd(n, 0)} className="num text-5xl font-semibold tracking-tight sm:text-6xl" />
-          <div className="pb-2">
-            <span className={clsx("num text-xl font-medium", up ? "text-up" : "text-down")}>
-              {up ? "+" : ""}
-              {fmtUsd(r.profit, 0)}
-            </span>
-            <span className={clsx("chip num ml-2 h-7 px-2 text-sm", up ? "pill-up" : "pill-down")}>
-              {fmtPct(r.totalReturn)}
-            </span>
+    <section className="card">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between px-5 py-4 text-left sm:px-6" aria-expanded={open}>
+        <span className="text-[15px] font-semibold tracking-tight">More statistics</span>
+        <ChevronDown className={clsx("size-4 text-muted transition-transform duration-300", open && "rotate-180")} />
+      </button>
+      <div className={clsx("grid transition-[grid-template-rows] duration-300 ease-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+        <div className="overflow-hidden">
+          <div className="border-t border-line px-5 py-5 sm:px-6">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+              {items.map(([label, value, sub]) => (
+                <div key={label}>
+                  <p className="text-xs text-muted">{label}</p>
+                  <p className="num mt-1 text-sm font-medium">{value}</p>
+                  {sub && <p className="text-[11px] text-faint">{sub}</p>}
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 mb-2 text-sm font-medium">Distance below the previous high</p>
+            {open && <DrawdownChart points={r.points} />}
           </div>
         </div>
-        <p data-hl className="mt-3 text-xs text-faint">
-          as of {fmtDate(r.endDate)} · {r.years.toFixed(1)} years · share price {fmtPct(r.priceReturn)} · total return incl. dividends {fmtPct(r.assetTotalReturn)}
-        </p>
       </div>
     </section>
-  );
-}
-
-function VersusBenchmark({ data }: { data: SimulationResponse }) {
-  const r = data.result!;
-  const b = data.benchmarkResult!;
-  const ref = useRef<HTMLDivElement>(null);
-  const diff = r.totalReturn - b.totalReturn;
-  const max = Math.max(r.finalValue, b.finalValue, 1);
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.from("[data-vs]", { scaleX: 0, transformOrigin: "left", duration: 0.8, stagger: 0.08, ease: "power3.out" });
-    },
-    { scope: ref, dependencies: [r.finalValue, b.finalValue] },
-  );
-  return (
-    <Panel
-      title={
-        <span>
-          {diff >= 0 ? "Beat" : "Trailed"} {data.benchmark} by <span className={clsx("num", diff >= 0 ? "text-up" : "text-down")}>{fmtPct(Math.abs(diff), 1, false)}</span>
-        </span>
-      }
-      subtitle={`Same dollars, same dates, invested in ${data.benchmarkName}`}
-    >
-      <div ref={ref} className="space-y-3">
-        {[
-          { t: data.ticker, v: r.finalValue, ret: r.totalReturn, cls: r.profit >= 0 ? "bg-up" : "bg-down" },
-          { t: data.benchmark!, v: b.finalValue, ret: b.totalReturn, cls: "bg-accent" },
-        ].map((x) => (
-          <div key={x.t}>
-            <div className="mb-1 flex justify-between text-xs">
-              <span className="font-medium">{x.t}</span>
-              <span className="num text-muted">
-                {fmtUsd(x.v, 0)} <span className={x.ret >= 0 ? "text-up" : "text-down"}>({fmtPct(x.ret)})</span>
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-subtle">
-              <div data-vs className={clsx("h-full rounded-full", x.cls)} style={{ width: `${(x.v / max) * 100}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-function YearlyReturns({
-  main,
-  bench,
-  ticker,
-  benchTicker,
-}: {
-  main: { year: number; ret: number }[];
-  bench: { year: number; ret: number }[] | null;
-  ticker: string;
-  benchTicker: string | null;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const benchBy = new Map(bench?.map((y) => [y.year, y.ret]));
-  const max = Math.max(0.05, ...main.map((y) => Math.abs(y.ret)), ...(bench ?? []).map((y) => Math.abs(y.ret)));
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.from("[data-yr]", { scaleX: 0, duration: 0.7, stagger: 0.03, ease: "power3.out" });
-    },
-    { scope: ref, dependencies: [main.length, ticker] },
-  );
-  return (
-    <div ref={ref} className="space-y-3">
-      {main.map((y) => {
-        const bv = benchBy.get(y.year);
-        return (
-          <div key={y.year} className="grid grid-cols-[44px_1fr] items-center gap-3">
-            <span className="num text-xs text-muted">{y.year}</span>
-            <div className="space-y-1">
-              <BarRow value={y.ret} max={max} label={ticker} strong />
-              {bv != null && <BarRow value={bv} max={max} label={benchTicker ?? ""} />}
-            </div>
-          </div>
-        );
-      })}
-      <div className="flex flex-wrap items-center gap-4 pt-1 text-[11px] text-muted">
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-sm bg-up" /> {ticker}
-        </span>
-        {benchTicker && (
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-sm bg-accent" /> {benchTicker}
-          </span>
-        )}
-        <span className="text-faint">Partial years run from the start date or to the latest close.</span>
-      </div>
-    </div>
-  );
-}
-
-function BarRow({ value, max, label, strong }: { value: number; max: number; label: string; strong?: boolean }) {
-  const w = (Math.abs(value) / max) * 38; // leave room for the label
-  return (
-    <div className="relative flex h-4 items-center" title={`${label}: ${fmtPct(value)}`}>
-      <div className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
-      <div
-        data-yr
-        className={clsx("absolute h-2 rounded-sm", strong ? (value >= 0 ? "bg-up" : "bg-down") : "bg-accent")}
-        style={value >= 0 ? { left: "50%", width: `${w}%`, transformOrigin: "left" } : { right: "50%", width: `${w}%`, transformOrigin: "right" }}
-      />
-      <span className={clsx("num absolute text-[10px]", strong ? (value >= 0 ? "text-up" : "text-down") : "text-accent")} style={value >= 0 ? { left: `calc(50% + ${w}% + 6px)` } : { right: `calc(50% + ${w}% + 6px)` }}>
-        {fmtPct(value, 1)}
-      </span>
-    </div>
-  );
-}
-
-function Kpi({ label, value, fmt, tone, sub }: { label: string; value: number | null; fmt: (n: number) => string; tone?: number | null; sub?: string }) {
-  return (
-    <div data-reveal className="card px-4 py-3">
-      <p className="label">{label}</p>
-      <AnimatedNumber
-        value={value}
-        format={fmt}
-        className={clsx("num mt-1.5 block text-lg font-semibold", tone == null ? "text-ink" : tone >= 0 ? "text-up" : "text-down")}
-      />
-      {sub && <p className="mt-0.5 truncate text-[11px] text-faint">{sub}</p>}
-    </div>
   );
 }
 
 function ResultsSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-6 w-2/3" />
-      <Skeleton className="h-16 w-1/2" />
-      <div className="grid grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16" />
-        ))}
-      </div>
+      <Skeleton className="h-5 w-2/3" />
+      <Skeleton className="h-14 w-1/2" />
       <Skeleton className="h-72 w-full" />
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
       <p className="label mb-2">{label}</p>
       {children}
+      {hint && <p className="mt-1.5 text-[11px] leading-relaxed text-faint">{hint}</p>}
     </div>
   );
 }
@@ -485,10 +395,10 @@ function TickerPicker({ value, onChange }: { value: string; onChange: (t: string
     setQ("");
   };
   return (
-    <Field label="Stock or ETF">
+    <Field label="Invest in">
       <div className="relative">
-        <div className="input flex items-center gap-2 !py-1.5">
-          <TickerLogo ticker={value} size={26} tryLogo={false} />
+        <div className="input flex items-center gap-2 !px-2">
+          <TickerLogo ticker={value} size={26} tryLogo={false} className="rounded-md" />
           <Search className="size-3.5 text-faint" />
           <input
             value={open ? q : value}
@@ -507,8 +417,8 @@ function TickerPicker({ value, onChange }: { value: string; onChange: (t: string
               if (e.key === "Enter" && hits[active]) pick(hits[active].ticker);
               if (e.key === "Escape") (e.target as HTMLInputElement).blur();
             }}
-            placeholder="Search ticker or company"
-            className="num min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+            placeholder="Search a stock or ETF"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
           />
         </div>
         {open && hits.length > 0 && (
@@ -519,7 +429,7 @@ function TickerPicker({ value, onChange }: { value: string; onChange: (t: string
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(h.ticker)}
                 onMouseMove={() => setActive(i)}
-                className={clsx("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left", i === active && "bg-subtle")}
+                className={clsx("flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left", i === active && "bg-subtle")}
               >
                 <span className="w-14 text-sm font-semibold">{h.ticker}</span>
                 <span className="truncate text-xs text-muted">{h.name}</span>
