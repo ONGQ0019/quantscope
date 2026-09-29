@@ -9,7 +9,7 @@ export function Sparkline({
   height = 48,
   positive,
   className,
-  strokeWidth = 1.6,
+  strokeWidth = 1.5,
 }: {
   data: number[];
   width?: number;
@@ -21,7 +21,7 @@ export function Sparkline({
   const id = useId().replace(/:/g, "");
   const ref = useRef<SVGSVGElement>(null);
   const up = positive ?? (data.length > 1 ? data[data.length - 1] >= data[0] : true);
-  const color = up ? "var(--color-up)" : "var(--color-down)";
+  const color = up ? "var(--up)" : "var(--down)";
 
   const { line, area } = useMemo(() => {
     if (data.length < 2) return { line: "", area: "" };
@@ -29,10 +29,7 @@ export function Sparkline({
     const max = Math.max(...data);
     const span = max - min || 1;
     const pad = strokeWidth;
-    const pts = data.map((v, i) => [
-      (i / (data.length - 1)) * width,
-      pad + (1 - (v - min) / span) * (height - pad * 2),
-    ]);
+    const pts = data.map((v, i) => [(i / (data.length - 1)) * width, pad + (1 - (v - min) / span) * (height - pad * 2)]);
     const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`).join("");
     return { line, area: `${line}L${width},${height}L0,${height}Z` };
   }, [data, width, height, strokeWidth]);
@@ -40,11 +37,10 @@ export function Sparkline({
   useGSAP(
     () => {
       const path = ref.current?.querySelector<SVGPathElement>("[data-line]");
-      const fill = ref.current?.querySelector<SVGPathElement>("[data-area]");
       if (!path || !line || prefersReducedMotion()) return;
       const len = path.getTotalLength();
-      gsap.fromTo(path, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.6, ease: "power3.inOut" });
-      if (fill) gsap.fromTo(fill, { opacity: 0 }, { opacity: 1, duration: 1.2, delay: 0.5, ease: "power2.out" });
+      gsap.fromTo(path, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1, ease: "power2.inOut" });
+      gsap.fromTo(ref.current!.querySelector("[data-area]"), { opacity: 0 }, { opacity: 1, duration: 0.6, delay: 0.5 });
     },
     { scope: ref, dependencies: [line] },
   );
@@ -54,7 +50,7 @@ export function Sparkline({
     <svg ref={ref} viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} preserveAspectRatio="none">
       <defs>
         <linearGradient id={`g${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.12" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>

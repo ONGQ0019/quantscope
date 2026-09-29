@@ -157,17 +157,17 @@ function RangeBar({ low, high, price }: { low: number | null; high: number | nul
       if (pct == null) return;
       const to = { left: `${pct * 100}%` };
       if (prefersReducedMotion()) gsap.set("[data-marker]", to);
-      else gsap.fromTo("[data-marker]", { left: "0%" }, { ...to, duration: 1.8, ease: "expo.out", delay: 0.2 });
-      gsap.fromTo("[data-fill]", { width: "0%" }, { width: `${pct * 100}%`, duration: 1.8, ease: "expo.out", delay: 0.2 });
+      else gsap.fromTo("[data-marker]", { left: "0%" }, { ...to, duration: 0.9, ease: "power3.out", delay: 0.1 });
+      gsap.fromTo("[data-fill]", { width: "0%" }, { width: `${pct * 100}%`, duration: 0.9, ease: "power3.out", delay: 0.1 });
     },
     { scope: ref, dependencies: [pct] },
   );
   return (
     <div ref={ref}>
-      <div className="relative mt-6 h-2 rounded-full bg-white/[0.06]">
-        <div data-fill className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-down/70 via-warn/70 to-up/80" />
+      <div className="relative mt-5 h-1.5 rounded-full bg-subtle">
+        <div data-fill className="absolute inset-y-0 left-0 rounded-full bg-muted/35" />
         <div data-marker className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="size-4 rounded-full border-2 border-bg bg-white shadow-[0_0_0_4px_rgb(255_255_255/0.12),0_0_20px_rgb(255_255_255/0.5)]" />
+          <div className="h-4 w-1 rounded-full bg-ink" />
         </div>
       </div>
       <div className="mt-3 flex justify-between text-xs">
@@ -203,7 +203,7 @@ function VolBody({ hv30, hv90, price }: { hv30: number | null; hv90: number | nu
         </div>
       </div>
       {move != null && price != null && (
-        <div className="rounded-xl border border-line bg-white/[0.02] p-3 text-xs text-muted">
+        <div className="rounded-lg bg-subtle p-3 text-xs text-muted">
           1-month ±1σ range from 30-day vol:{" "}
           <span className="num text-ink">
             ${fmtPrice(price - move)} – ${fmtPrice(price + move)}
@@ -223,7 +223,7 @@ function About({ s }: { s: NonNullable<ReturnType<typeof useStock>["data"]> }) {
         <div>
           <p className={clsx("leading-relaxed text-muted", !more && "line-clamp-5")}>{s.description}</p>
           {s.description.length > 280 && (
-            <button onClick={() => setMore((m) => !m)} className="mt-1 text-xs text-accent-2 hover:underline">
+            <button onClick={() => setMore((m) => !m)} className="mt-1 text-xs text-accent hover:underline">
               {more ? "Show less" : "Read more"}
             </button>
           )}
@@ -235,7 +235,7 @@ function About({ s }: { s: NonNullable<ReturnType<typeof useStock>["data"]> }) {
         {s.employees != null && <Meta icon={Users} label={`${s.employees.toLocaleString()} employees`} />}
         {s.listDate && <Meta icon={Calendar} label={`Listed ${fmtDate(s.listDate)}`} />}
         {s.homepage && (
-          <a href={s.homepage} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-accent-2 hover:underline">
+          <a href={s.homepage} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-accent hover:underline">
             <Globe className="size-3.5" />
             {s.homepage.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
             <ExternalLink className="size-3" />
@@ -263,8 +263,8 @@ function FinancialsBody({ fin }: { fin: Financials }) {
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      gsap.from("[data-bar]", { scaleY: 0, transformOrigin: "bottom", stagger: 0.05, duration: 1.2, ease: "expo.out" });
-      gsap.from("[data-margin]", { width: 0, stagger: 0.1, duration: 1.4, ease: "expo.out" });
+      gsap.from("[data-bar]", { scaleY: 0, transformOrigin: "bottom", stagger: 0.03, duration: 0.7, ease: "power3.out" });
+      gsap.from("[data-margin]", { width: 0, stagger: 0.06, duration: 0.8, ease: "power3.out" });
     },
     { scope: ref, dependencies: [qs.length] },
   );
@@ -291,10 +291,10 @@ function FinancialsBody({ fin }: { fin: Financials }) {
                 <span className="text-muted">{m.label}</span>
                 <span className="num text-ink">{fmtPct(m.v, 1, false)}</span>
               </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-subtle">
                 <div
                   data-margin
-                  className={clsx("h-full rounded-full", (m.v ?? 0) >= 0 ? "bg-gradient-to-r from-accent to-accent-2" : "bg-down")}
+                  className={clsx("h-full rounded-full", (m.v ?? 0) >= 0 ? "bg-accent" : "bg-down")}
                   style={{ width: `${Math.min(100, Math.abs(m.v ?? 0) * 100)}%` }}
                 />
               </div>
@@ -303,17 +303,25 @@ function FinancialsBody({ fin }: { fin: Financials }) {
         </div>
       </div>
       <div>
-        <p className="label mb-3">Quarterly revenue &amp; net income</p>
+        <div className="mb-3 flex items-center gap-4 text-xs text-muted">
+          <span className="font-medium text-ink">Quarterly</span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-sm bg-accent/25" /> Revenue
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-sm bg-accent" /> Net income
+          </span>
+        </div>
         {qs.length ? (
           <div className="flex h-44 items-end gap-2">
             {qs.map((q) => (
               <div key={q.end} className="group flex h-full flex-1 flex-col items-center justify-end gap-1.5" title={`${q.label}: revenue ${fmtUsdCompact(q.revenue)}, net income ${fmtUsdCompact(q.netIncome)}`}>
                 <span className="num text-[10px] text-faint opacity-0 transition-opacity group-hover:opacity-100">{fmtUsdCompact(q.revenue)}</span>
                 <div className="relative flex w-full flex-1 items-end justify-center">
-                  <div data-bar className="w-full max-w-[30px] rounded-t-md bg-gradient-to-t from-accent/40 to-accent-2/80" style={{ height: `${(Math.abs(q.revenue ?? 0) / max) * 100}%` }} />
+                  <div data-bar className="w-full max-w-[28px] rounded-t bg-accent/25" style={{ height: `${(Math.abs(q.revenue ?? 0) / max) * 100}%` }} />
                   <div
                     data-bar
-                    className={clsx("absolute bottom-0 w-[45%] max-w-[14px] rounded-t-sm", (q.netIncome ?? 0) >= 0 ? "bg-up/90" : "bg-down/90")}
+                    className={clsx("absolute bottom-0 w-[45%] max-w-[14px] rounded-t-sm", (q.netIncome ?? 0) >= 0 ? "bg-accent" : "bg-down")}
                     style={{ height: `${(Math.abs(q.netIncome ?? 0) / max) * 100}%` }}
                   />
                 </div>
@@ -340,7 +348,7 @@ function NewsList({ items }: { items: News["items"] }) {
   return (
     <div className="-mx-2 divide-y divide-line">
       {items.slice(0, 10).map((n) => (
-        <a key={n.id} href={n.url} target="_blank" rel="noreferrer" className="group flex gap-4 rounded-xl px-2 py-3.5 transition-colors hover:bg-white/[0.03]">
+        <a key={n.id} href={n.url} target="_blank" rel="noreferrer" className="group flex gap-4 rounded-lg px-2 py-3.5 transition-colors hover:bg-subtle">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-[11px] text-faint">
               <span className="font-medium text-muted">{n.publisher}</span>·<span>{timeAgo(n.published)}</span>
@@ -397,7 +405,7 @@ function DividendsBody({ div }: { div: Dividends }) {
       {div.history.length > 0 && (
         <div className="max-h-56 overflow-y-auto rounded-xl border border-line">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-[#0d0f18] text-faint">
+            <thead className="sticky top-0 bg-subtle text-muted">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">Ex-date</th>
                 <th className="px-3 py-2 text-left font-medium">Paid</th>

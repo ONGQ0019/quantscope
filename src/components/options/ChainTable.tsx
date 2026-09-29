@@ -49,7 +49,7 @@ function Bar({ value, max, tone }: { value: number | null; max: number; tone: "a
   return (
     <span className="relative inline-flex w-full items-center justify-end">
       <span
-        className={clsx("absolute inset-y-[-3px] right-0 rounded-sm", tone === "accent" ? "bg-accent/20" : "bg-accent-2/15")}
+        className={clsx("absolute inset-y-[-3px] right-0 rounded-sm", tone === "accent" ? "bg-accent/12" : "bg-muted/15")}
         style={{ width: `${Math.min(100, (value / Math.max(1, max)) * 100)}%` }}
       />
       <span className="relative">{fmtCompact(value)}</span>
@@ -105,10 +105,10 @@ export function ChainTable({
     if (sc && spot) {
       const target = spot.offsetTop - sc.clientHeight / 2 + spot.offsetHeight / 2;
       if (prefersReducedMotion()) sc.scrollTop = target;
-      else gsap.to(sc, { scrollTop: target, duration: 1, ease: "expo.out" });
+      else gsap.to(sc, { scrollTop: target, duration: 0.6, ease: "power3.out" });
     }
     if (!prefersReducedMotion() && body.current) {
-      gsap.fromTo(body.current.querySelectorAll("tr"), { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.012, ease: "power3.out" });
+      gsap.fromTo(body.current.querySelectorAll("tr"), { opacity: 0 }, { opacity: 1, duration: 0.3, stagger: 0.008, ease: "none" });
     }
   }, [chain.expiration, chain.ticker, strikeWindow]);
 
@@ -122,8 +122,8 @@ export function ChainTable({
         onClick={() => side && onPick(type, row)}
         className={clsx(
           "num cursor-pointer px-2.5 py-2 text-right text-[12.5px] whitespace-nowrap transition-colors",
-          itm && (type === "call" ? "bg-up/[0.07]" : "bg-down/[0.07]"),
-          isSel && "!bg-accent/20 text-ink",
+          itm && "bg-subtle",
+          isSel && "!bg-accent/12 font-semibold !text-accent",
           col.key === "price" ? "font-medium text-ink" : "text-muted",
           first && "pl-4",
         )}
@@ -136,13 +136,13 @@ export function ChainTable({
   return (
     <div ref={scroller} className="relative max-h-[68vh] overflow-auto rounded-xl border border-line">
       <table className="w-full min-w-[720px] border-collapse">
-        <thead className="sticky top-0 z-20 bg-[#0b0d16]/95 backdrop-blur">
-          <tr className="text-[10px] tracking-[0.12em] text-faint uppercase">
-            <th colSpan={cols.length} className="border-b border-line py-2 text-center font-semibold text-up/80">
+        <thead className="sticky top-0 z-20 bg-surface">
+          <tr className="text-xs">
+            <th colSpan={cols.length} className="border-b border-line py-2 text-center font-medium text-ink">
               Calls
             </th>
             <th className="border-b border-line px-3 py-2" />
-            <th colSpan={cols.length} className="border-b border-line py-2 text-center font-semibold text-down/80">
+            <th colSpan={cols.length} className="border-b border-line py-2 text-center font-medium text-ink">
               Puts
             </th>
           </tr>
@@ -152,7 +152,7 @@ export function ChainTable({
                 {c.label}
               </th>
             ))}
-            <th className="border-b border-line bg-white/[0.03] px-3 py-2 text-center font-medium text-muted">Strike</th>
+            <th className="border-b border-line bg-subtle px-3 py-2 text-center font-medium text-muted">Strike</th>
             {cols.map((c) => (
               <th key={`hp-${c.key}`} title={c.title} className="border-b border-line px-2.5 py-2 text-right font-medium">
                 {c.label}
@@ -164,9 +164,9 @@ export function ChainTable({
           {rows.map((row, i) => (
             <Fragment key={row.strike}>
               {i === spotIndex && <SpotRow spot={chain.spot} colSpan={cols.length * 2 + 1} />}
-              <tr className="row-hover border-b border-white/[0.035] hover:bg-white/[0.03]">
+              <tr className="row-hover border-b border-line/70">
                 {callCols.map((c, j) => cell("call", row, c, j === 0))}
-                <td className="num bg-white/[0.03] px-3 py-2 text-center text-[13px] font-semibold text-ink">{fmtPrice(row.strike, row.strike % 1 ? 2 : 0)}</td>
+                <td className="num bg-subtle px-3 py-2 text-center text-[13px] font-semibold text-ink">{fmtPrice(row.strike, row.strike % 1 ? 2 : 0)}</td>
                 {cols.map((c) => cell("put", row, c, false))}
               </tr>
             </Fragment>
@@ -183,8 +183,8 @@ function SpotRow({ spot, colSpan }: { spot: number; colSpan: number }) {
     <tr data-spot>
       <td colSpan={colSpan} className="p-0">
         <div className="relative flex h-7 items-center justify-center">
-          <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-accent-2/70 to-transparent shadow-[0_0_12px_rgb(56_225_255/0.6)]" />
-          <span className="num relative rounded-full border border-accent-2/40 bg-[#07131a] px-3 py-0.5 text-[11px] font-medium text-accent-2">
+          <div className="absolute inset-x-0 top-1/2 h-px bg-accent" />
+          <span className="num relative rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-surface">
             Spot ${fmtPrice(spot)}
           </span>
         </div>

@@ -4,9 +4,8 @@ import { useRef, type ReactNode } from "react";
 import { gsap, prefersReducedMotion, ScrollTrigger, useGSAP } from "@/lib/client/gsap";
 
 /**
- * Animates every [data-reveal] descendant into view: staggered rise + fade,
- * batched on scroll so below-the-fold content animates as it arrives.
- * Re-runs when `deps` change (e.g. data finished loading).
+ * Fades [data-reveal] descendants in with a short rise as they enter the viewport.
+ * Re-runs when `deps` change (e.g. data finished loading) and only animates new elements.
  */
 export function Reveal({ children, className, deps = [] }: { children: ReactNode; className?: string; deps?: unknown[] }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -16,12 +15,11 @@ export function Reveal({ children, className, deps = [] }: { children: ReactNode
       if (!els.length) return;
       els.forEach((el) => el.setAttribute("data-revealed", ""));
       if (prefersReducedMotion()) return;
-      gsap.set(els, { opacity: 0, y: 28, filter: "blur(6px)" });
+      gsap.set(els, { opacity: 0, y: 10 });
       ScrollTrigger.batch(els, {
-        start: "top 95%",
+        start: "top 96%",
         once: true,
-        onEnter: (batch) =>
-          gsap.to(batch, { opacity: 1, y: 0, filter: "blur(0px)", duration: 1.1, stagger: 0.07, ease: "expo.out", clearProps: "filter" }),
+        onEnter: (batch) => gsap.to(batch, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: "power2.out", clearProps: "transform" }),
       });
     },
     { scope: ref, dependencies: deps },

@@ -11,7 +11,7 @@ export interface SegmentOption<T extends string> {
   title?: string;
 }
 
-/** Segmented control with a GSAP-driven sliding highlight. */
+/** Segmented control; the selected background slides between options. */
 export function Segmented<T extends string>({
   options,
   value,
@@ -37,13 +37,13 @@ export function Segmented<T extends string>({
       gsap.set(pill.current, props);
       first.current = false;
     } else {
-      gsap.to(pill.current, { ...props, duration: 0.55, ease: "expo.out" });
+      gsap.to(pill.current, { ...props, duration: 0.3, ease: "power3.out" });
     }
   }, [value, options.length]);
 
   return (
-    <div ref={wrap} role="tablist" className={clsx("relative inline-flex rounded-xl border border-line bg-black/20 p-1", className)}>
-      <div ref={pill} className="absolute top-1 bottom-1 left-0 rounded-[9px] bg-white/[0.09] opacity-0 shadow-[inset_0_1px_0_rgb(255_255_255/0.08)]" />
+    <div ref={wrap} role="tablist" className={clsx("relative inline-flex rounded-lg bg-subtle p-0.5", className)}>
+      <div ref={pill} className="absolute top-0.5 bottom-0.5 left-0 rounded-md border border-line bg-surface opacity-0 shadow-[0_1px_2px_rgb(0_0_0/0.06)]" />
       {options.map((o) => (
         <button
           key={o.value}
@@ -54,8 +54,8 @@ export function Segmented<T extends string>({
           title={o.title}
           onClick={() => onChange(o.value)}
           className={clsx(
-            "relative z-10 rounded-[9px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-35",
-            size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm",
+            "relative z-10 rounded-md font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+            size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-1.5 text-sm",
             o.value === value ? "text-ink" : "text-muted hover:text-ink",
           )}
         >

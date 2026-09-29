@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowRight, BarChart3, Calculator, Clock, CornerDownLeft, Layers, Radar, Search, TrendingUp } from "lucide-react";
+import { ArrowRight, Calculator, Clock, CornerDownLeft, Radar, Search, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { gsap, prefersReducedMotion } from "@/lib/client/gsap";
@@ -17,10 +17,12 @@ const PaletteCtx = createContext<{ open: (initial?: string) => void }>({ open: (
 export const usePalette = () => useContext(PaletteCtx);
 
 const PAGES: Extract<Item, { kind: "page" }>[] = [
-  { kind: "page", label: "Market overview", href: "/", icon: <TrendingUp className="size-4" />, hint: "Indices & movers" },
-  { kind: "page", label: "Market scanner", href: "/scanner", icon: <Radar className="size-4" />, hint: "Filter 10k+ stocks" },
-  { kind: "page", label: "Investment simulator", href: "/simulate", icon: <Calculator className="size-4" />, hint: "What if I invested…" },
+  { kind: "page", label: "Markets", href: "/", icon: <TrendingUp className="size-4" />, hint: "Indices and movers" },
+  { kind: "page", label: "Scanner", href: "/scanner", icon: <Radar className="size-4" />, hint: "Filter every US listing" },
+  { kind: "page", label: "Simulator", href: "/simulate", icon: <Calculator className="size-4" />, hint: "What if I had invested" },
 ];
+
+const TYPE_LABEL: Record<string, string> = { CS: "Stock", ETF: "ETF", ADRC: "ADR", FUND: "Fund", ETN: "ETN", ETV: "ETV", ETS: "ETS" };
 
 export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   const [isOpen, setOpen] = useState(false);
@@ -42,7 +44,7 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
         e.preventDefault();
         open();
       } else if (!typing && !e.metaKey && !e.ctrlKey && !e.altKey && /^[a-zA-Z]$/.test(e.key) && !isOpen) {
-        // Start typing a ticker anywhere to search, Bloomberg-style.
+        // Start typing a ticker anywhere to search.
         open(e.key.toUpperCase());
       }
     };
@@ -71,15 +73,14 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
   const list = useRef<HTMLDivElement>(null);
   const closing = useRef(false);
 
-  // Open animation
   useEffect(() => {
     input.current?.focus();
     const len = input.current?.value.length ?? 0;
     input.current?.setSelectionRange(len, len);
     if (prefersReducedMotion()) return;
     const tl = gsap.timeline();
-    tl.fromTo(root.current, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power2.out" });
-    tl.fromTo(panel.current, { opacity: 0, y: -18, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "expo.out" }, 0);
+    tl.fromTo(root.current, { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" });
+    tl.fromTo(panel.current, { opacity: 0, y: -6, scale: 0.985 }, { opacity: 1, y: 0, scale: 1, duration: 0.22 }, 0);
     return () => {
       tl.kill();
     };
@@ -89,13 +90,10 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
     if (closing.current) return;
     closing.current = true;
     if (prefersReducedMotion()) return onClose();
-    gsap
-      .timeline({ onComplete: onClose })
-      .to(panel.current, { opacity: 0, y: -10, scale: 0.98, duration: 0.18, ease: "power2.in" })
-      .to(root.current, { opacity: 0, duration: 0.18 }, 0);
+    gsap.to([panel.current, root.current], { opacity: 0, duration: 0.12, ease: "none", onComplete: onClose });
   }, [onClose]);
 
-  // Search (local index on our server — no market-data API calls per keystroke)
+  // Search runs against the local ticker index on our server — no market-data calls per keystroke.
   useEffect(() => {
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
@@ -125,13 +123,6 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
       ...PAGES,
     ];
   }, [hits, query, recent]);
-
-  // Stagger results in when they change
-  useEffect(() => {
-    if (prefersReducedMotion() || !list.current) return;
-    const rows = list.current.querySelectorAll("[data-row]");
-    gsap.fromTo(rows, { opacity: 0, x: -6 }, { opacity: 1, x: 0, duration: 0.4, stagger: 0.018, ease: "power3.out" });
-  }, [items]);
 
   useEffect(() => {
     list.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: "nearest" });
@@ -163,74 +154,69 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
     }
   };
 
-  const sectionOf = (item: Item) => (item.kind === "page" ? "Pages" : item.recent ? "Recent" : query ? "Tickers" : "Popular");
+  const sectionOf = (item: Item) => (item.kind === "page" ? "Pages" : item.recent ? "Recent" : query ? "Results" : "Popular");
   return (
     <div
       ref={root}
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/55 px-4 pt-[12vh] backdrop-blur-md"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 px-4 pt-[14vh]"
       onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
-      <div ref={panel} className="glass w-full max-w-[640px] overflow-hidden !rounded-2xl !bg-[#0c0e17]/90" role="dialog" aria-label="Search">
+      <div
+        ref={panel}
+        className="w-full max-w-[600px] overflow-hidden rounded-xl border border-line bg-surface shadow-[0_24px_60px_-12px_rgb(0_0_0/0.35)]"
+        role="dialog"
+        aria-label="Search"
+      >
         <div className="flex items-center gap-3 border-b border-line px-4">
-          <Search className="size-5 text-muted" />
+          <Search className="size-4 text-faint" />
           <input
             ref={input}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search any US stock or ETF — ticker or company name"
-            className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
+            placeholder="Search stocks and ETFs by ticker or name"
+            className="h-12 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-faint"
             spellCheck={false}
             autoComplete="off"
           />
           <kbd>esc</kbd>
         </div>
-        <div ref={list} className="max-h-[52vh] overflow-y-auto p-2">
+        <div ref={list} className="max-h-[52vh] overflow-y-auto p-1.5">
           {items.length === 0 && <p className="px-3 py-10 text-center text-sm text-muted">No matches for “{query}”.</p>}
           {items.map((item, i) => {
             const section = sectionOf(item);
             const header = i === 0 || sectionOf(items[i - 1]) !== section ? section : null;
             return (
               <div key={item.kind === "page" ? item.href : `${section}-${item.hit.ticker}`}>
-                {header && <p className="label px-3 pt-3 pb-1.5">{header}</p>}
+                {header && <p className="px-2.5 pt-2.5 pb-1 text-[11px] font-medium text-faint">{header}</p>}
                 <button
-                  data-row
                   data-index={i}
                   onMouseMove={() => setActive(i)}
                   onClick={() => go(item)}
-                  className={clsx(
-                    "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
-                    i === active ? "bg-white/[0.07]" : "hover:bg-white/[0.04]",
-                  )}
+                  className={clsx("flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left", i === active && "bg-subtle")}
                 >
                   {item.kind === "ticker" ? (
                     <>
-                      <TickerLogo ticker={item.hit.ticker} size={34} tryLogo={false} />
+                      <TickerLogo ticker={item.hit.ticker} size={30} tryLogo={false} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold tracking-tight">{item.hit.ticker}</span>
+                          <span className="text-sm font-semibold">{item.hit.ticker}</span>
                           {item.recent && <Clock className="size-3 text-faint" />}
-                          <span className="chip !py-0 !text-[10px]">{item.hit.type === "CS" ? "Stock" : item.hit.type}</span>
                         </div>
                         <p className="truncate text-xs text-muted">{item.hit.name}</p>
                       </div>
-                      <span className="hidden text-[11px] text-faint sm:block">{item.hit.exchange}</span>
-                      {i === active && (
-                        <span className="hidden items-center gap-1.5 text-[11px] text-muted sm:flex">
-                          <Layers className="size-3" /> ⇧↵
-                        </span>
-                      )}
+                      <span className="hidden text-xs text-faint sm:block">
+                        {TYPE_LABEL[item.hit.type] ?? item.hit.type} · {item.hit.exchange}
+                      </span>
                     </>
                   ) : (
                     <>
-                      <span className="grid size-[34px] place-items-center rounded-[30%] border border-line bg-white/[0.04] text-accent">
-                        {item.icon}
-                      </span>
+                      <span className="grid size-[30px] place-items-center rounded-md border border-line text-muted">{item.icon}</span>
                       <div className="flex-1">
-                        <p className="font-medium">{item.label}</p>
+                        <p className="text-sm font-medium">{item.label}</p>
                         <p className="text-xs text-muted">{item.hint}</p>
                       </div>
-                      <ArrowRight className="size-4 text-faint transition-transform group-hover:translate-x-0.5" />
+                      <ArrowRight className="size-4 text-faint" />
                     </>
                   )}
                 </button>
@@ -238,17 +224,13 @@ function Palette({ seed, onClose }: { seed: string; onClose: () => void }) {
             );
           })}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line px-4 py-2.5 text-[11px] text-faint">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line bg-subtle/60 px-4 py-2 text-[11px] text-faint">
           <span className="flex items-center gap-1.5">
-            <CornerDownLeft className="size-3" /> open
+            <CornerDownLeft className="size-3" /> Open
           </span>
-          <span className="flex items-center gap-1.5">
-            <Layers className="size-3" /> ⇧↵ options chain
-          </span>
-          <span className="flex items-center gap-1.5">
-            <BarChart3 className="size-3" /> ⌥↵ simulate
-          </span>
-          <span className="ml-auto">Tip: start typing a ticker anywhere</span>
+          <span>⇧↵ Options chain</span>
+          <span>⌥↵ Simulate</span>
+          <span className="ml-auto hidden sm:inline">Start typing a ticker anywhere</span>
         </div>
       </div>
     </div>

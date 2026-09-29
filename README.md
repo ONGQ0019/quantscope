@@ -1,6 +1,6 @@
 # Quantscope
 
-A fast, animated US stock & options terminal: search any ticker, read option chains with greeks, build multi-leg strategies, scan the whole market, and simulate what an investment would be worth today.
+A fast, clean US stock & options research app: search any ticker, read option chains with greeks, build multi-leg strategies, scan the whole market, and simulate what an investment would be worth today.
 
 Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, GSAP 3 and TradingView Lightweight Charts, on top of [Massive](https://massive.com) market data.
 
@@ -8,8 +8,9 @@ Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, GSAP 3 and TradingV
 
 | | |
 |---|---|
+| **Light & dark themes** | Clean, neutral design that follows your system setting, with a toggle in the header. |
 | **⌘K command palette** | Instant fuzzy search over 11,000+ US stocks & ETFs (local index — no API call per keystroke). Start typing a ticker anywhere. `⇧↵` jumps to the option chain, `⌥↵` to the simulator. |
-| **Markets** | Index cards with sparklines, a live ticker tape, top gainers / losers / most active and market breadth — computed from every US listing. |
+| **Markets** | Index cards with sparklines, top gainers / losers / most active and market breadth, computed from every US listing. |
 | **Stock pages** | Area/candle chart with SMA 20/50/200 and volume, key stats, 52-week range, historical volatility and expected move, TTM financials with quarterly bars, dividends & splits, news with per-ticker AI sentiment. |
 | **Option chains** | Every expiration and strike with price, IV, Δ Γ Θ V, probability ITM and breakevens. Live mode (bid/ask, volume, OI, max pain, put/call) on a Massive Options plan; a clearly-labelled Black-Scholes model chain otherwise. |
 | **Strategy builder** | Click contracts or use presets (straddle, strangle, spreads, iron condor, cash-secured put). Payoff at expiry / today / halfway, breakevens, max profit & loss, probability of profit, position greeks. |

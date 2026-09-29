@@ -1,8 +1,5 @@
-"use client";
-
 import clsx from "clsx";
-import { useRef, type ReactNode } from "react";
-import { useSpotlight } from "@/lib/client/hooks";
+import type { ReactNode } from "react";
 
 export function Panel({
   children,
@@ -19,20 +16,18 @@ export function Panel({
   action?: ReactNode;
   reveal?: boolean;
 }) {
-  const ref = useRef<HTMLElement>(null);
-  useSpotlight(ref);
   return (
-    <section ref={ref} data-reveal={reveal ? "" : undefined} className={clsx("glass spotlight p-5 sm:p-6", className)}>
+    <section data-reveal={reveal ? "" : undefined} className={clsx("card p-5", className)}>
       {(title || action) && (
-        <header className="relative mb-4 flex items-start justify-between gap-4">
-          <div>
+        <header className="mb-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
             {title && <h2 className="text-[15px] font-semibold tracking-tight text-ink">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
           </div>
           {action}
         </header>
       )}
-      <div className="relative">{children}</div>
+      {children}
     </section>
   );
 }

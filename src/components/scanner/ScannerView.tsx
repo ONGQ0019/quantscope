@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Flame, Rocket, RotateCcw, Search, SlidersHorizontal, TrendingDown, TrendingUp, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
@@ -46,14 +46,14 @@ const DEFAULTS: Filters = {
   dir: "desc",
 };
 
-const PRESETS: { name: string; icon: typeof Flame; f: Partial<Filters>; needsHistory?: boolean }[] = [
-  { name: "Top gainers", icon: TrendingUp, f: { sort: "changePct", dir: "desc", minPrice: "2", minDollarVolume: "5000000" } },
-  { name: "Top losers", icon: TrendingDown, f: { sort: "changePct", dir: "asc", minPrice: "2", minDollarVolume: "5000000" } },
-  { name: "Gap ups", icon: Rocket, f: { sort: "gapPct", dir: "desc", minGap: "3", minDollarVolume: "2000000" } },
-  { name: "Gap downs", icon: ArrowDown, f: { sort: "gapPct", dir: "asc", maxGap: "-3", minDollarVolume: "2000000" } },
-  { name: "Most active $", icon: Flame, f: { sort: "dollarVolume", dir: "desc" } },
-  { name: "Penny runners", icon: Zap, f: { sort: "changePct", dir: "desc", minPrice: "0.5", maxPrice: "5", minChange: "10", minVolume: "1000000", minDollarVolume: "" } },
-  { name: "Unusual volume", icon: Flame, f: { sort: "rvol", dir: "desc", minRvol: "2", minDollarVolume: "2000000" }, needsHistory: true },
+const PRESETS: { name: string; f: Partial<Filters>; needsHistory?: boolean }[] = [
+  { name: "Top gainers", f: { sort: "changePct", dir: "desc", minPrice: "2", minDollarVolume: "5000000" } },
+  { name: "Top losers", f: { sort: "changePct", dir: "asc", minPrice: "2", minDollarVolume: "5000000" } },
+  { name: "Gap ups", f: { sort: "gapPct", dir: "desc", minGap: "3", minDollarVolume: "2000000" } },
+  { name: "Gap downs", f: { sort: "gapPct", dir: "asc", maxGap: "-3", minDollarVolume: "2000000" } },
+  { name: "Most active $", f: { sort: "dollarVolume", dir: "desc" } },
+  { name: "Penny runners", f: { sort: "changePct", dir: "desc", minPrice: "0.5", maxPrice: "5", minChange: "10", minVolume: "1000000", minDollarVolume: "" } },
+  { name: "Unusual volume", f: { sort: "rvol", dir: "desc", minRvol: "2", minDollarVolume: "2000000" }, needsHistory: true },
 ];
 
 type ScanResponse = { date: string; lookbackDays: number; universe: number; total: number; rows: ScanRow[] };
@@ -92,8 +92,8 @@ export function ScannerView() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="label">Scanner</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
-            Scan the <span className="text-gradient">entire market.</span>
+          <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-[40px]">
+            Scan the entire market
           </h1>
           <p className="mt-3 max-w-2xl text-muted">
             {data ? (
@@ -124,13 +124,12 @@ export function ScannerView() {
                   setF({ ...DEFAULTS, ...p.f });
                 }}
                 className={clsx(
-                  "flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm transition-all disabled:cursor-not-allowed disabled:opacity-35",
+                  "h-8 rounded-lg border px-3 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40",
                   preset === p.name
-                    ? "border-accent/50 bg-gradient-to-b from-accent/25 to-accent/10 text-ink shadow-[0_0_24px_-8px_rgb(139_123_255/0.8)]"
-                    : "border-line bg-white/[0.03] text-muted hover:border-line-strong hover:text-ink",
+                    ? "border-ink bg-ink text-bg"
+                    : "border-line bg-surface text-muted hover:border-line-strong hover:text-ink",
                 )}
               >
-                <p.icon className="size-4" />
                 {p.name}
               </button>
             );
@@ -162,7 +161,7 @@ export function ScannerView() {
                       <button
                         key={v}
                         onClick={() => set({ types: on ? f.types.filter((t) => t !== v) : [...f.types, v] })}
-                        className={clsx("chip transition-colors", on ? "border-accent/40 bg-accent/10 text-ink" : "hover:text-ink")}
+                        className={clsx("chip transition-colors", on ? "border-line-strong bg-subtle text-ink" : "hover:text-ink")}
                       >
                         {label}
                       </button>
@@ -241,8 +240,8 @@ function Single({ label, value, onChange, placeholder, disabled }: { label: stri
 type Col = { key: keyof ScanRow; label: string; className?: string; render: (r: ScanRow) => React.ReactNode; history?: boolean };
 
 function heat(v: number) {
-  const a = Math.min(0.35, Math.abs(v) * 2.2);
-  return { backgroundColor: v >= 0 ? `rgba(52,211,153,${a})` : `rgba(251,113,133,${a})` };
+  const a = Math.min(0.22, 0.04 + Math.abs(v) * 1.4);
+  return { backgroundColor: `color-mix(in srgb, var(${v >= 0 ? "--up" : "--down"}) ${Math.round(a * 100)}%, transparent)` };
 }
 
 const COLUMNS: Col[] = [
@@ -266,8 +265,8 @@ const COLUMNS: Col[] = [
     label: "Close in range",
     render: (r) => (
       <span className="inline-flex w-16 items-center">
-        <span className="relative h-1 w-full rounded-full bg-white/10">
-          <span className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-2" style={{ left: `${r.closeLocation * 100}%` }} />
+        <span className="relative h-1 w-full rounded-full bg-line">
+          <span className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink" style={{ left: `${r.closeLocation * 100}%` }} />
         </span>
       </span>
     ),
@@ -310,7 +309,7 @@ function ResultsTable({
   if (!rows.length) return <p className="px-6 py-16 text-center text-sm text-muted">Nothing matches these filters. Try loosening them.</p>;
 
   const head = (k: keyof ScanRow, label: string, left = false) => (
-    <th key={k} className={clsx("sticky top-0 z-10 bg-[#0b0d16]/95 px-3 py-2.5 font-medium backdrop-blur", left ? "text-left" : "text-right")}>
+    <th key={k} className={clsx("sticky top-0 z-10 border-b border-line bg-surface px-3 py-2.5 font-medium", left ? "text-left" : "text-right")}>
       <button onClick={() => onSort(k)} className={clsx("inline-flex items-center gap-1 transition-colors hover:text-ink", sort === k && "text-ink")}>
         {label}
         {sort === k && (dir === "desc" ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />)}
@@ -322,7 +321,7 @@ function ResultsTable({
     <div className="mt-4">
       <div className="max-h-[70vh] overflow-auto border-t border-line">
         <table className="w-full min-w-[860px] text-sm">
-          <thead className="text-[11px] text-faint">
+          <thead className="text-xs text-muted">
             <tr>
               {head("ticker", "Symbol", true)}
               {cols.map((c) => head(c.key, c.label))}
@@ -330,12 +329,12 @@ function ResultsTable({
           </thead>
           <tbody ref={ref}>
             {rows.map((r) => (
-              <tr key={r.ticker} className="row-hover border-t border-white/[0.04]">
+              <tr key={r.ticker} className="row-hover border-t border-line/70">
                 <td className="px-3 py-2">
                   <Link href={`/stock/${encodeURIComponent(r.ticker)}`} className="group flex items-center gap-2.5">
                     <TickerLogo ticker={r.ticker} size={28} tryLogo={false} />
                     <div className="min-w-0">
-                      <p className="font-semibold tracking-tight group-hover:text-accent-2">{r.ticker}</p>
+                      <p className="font-semibold group-hover:underline">{r.ticker}</p>
                       <p className="max-w-[220px] truncate text-[11px] text-faint">{r.name}</p>
                     </div>
                   </Link>

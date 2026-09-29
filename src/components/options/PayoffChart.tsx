@@ -57,10 +57,9 @@ export function PayoffChart({ legs, market, breakevens }: { legs: StrategyLeg[];
       const line = svg.current?.querySelector<SVGPathElement>("[data-exp]");
       if (line) {
         const len = line.getTotalLength();
-        gsap.fromTo(svg.current!.querySelectorAll("[data-exp]"), { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.3, ease: "power3.inOut" });
+        gsap.fromTo(svg.current!.querySelectorAll("[data-exp]"), { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.8, ease: "power2.inOut" });
       }
-      gsap.fromTo(svg.current!.querySelectorAll("[data-area]"), { opacity: 0 }, { opacity: 1, duration: 1, delay: 0.5 });
-      gsap.fromTo(svg.current!.querySelectorAll("[data-now]"), { opacity: 0 }, { opacity: 1, duration: 0.8, delay: 0.8 });
+      gsap.fromTo(svg.current!.querySelectorAll("[data-area], [data-now]"), { opacity: 0 }, { opacity: 1, duration: 0.5, delay: 0.3 });
     },
     { scope: svg, dependencies: [model.expPath] },
   );
@@ -74,6 +73,7 @@ export function PayoffChart({ legs, market, breakevens }: { legs: StrategyLeg[];
     setHoverX(model.lo + ((px - PAD.l) / (W - PAD.l - PAD.r)) * (model.hi - model.lo));
   };
 
+  const mono = { fontFamily: "var(--font-geist-sans)" };
   return (
     <div className="relative">
       <svg ref={svg} viewBox={`0 0 ${W} ${H}`} className="h-auto w-full touch-none select-none" onPointerMove={onMove} onPointerLeave={() => setHoverX(null)}>
@@ -84,85 +84,75 @@ export function PayoffChart({ legs, market, breakevens }: { legs: StrategyLeg[];
           <clipPath id={`dn${uid}`}>
             <rect x="0" y={model.y0} width={W} height={Math.max(0, H - model.y0)} />
           </clipPath>
-          <linearGradient id={`gu${uid}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#34d399" stopOpacity="0.35" />
-            <stop offset="1" stopColor="#34d399" stopOpacity="0.02" />
-          </linearGradient>
-          <linearGradient id={`gd${uid}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#fb7185" stopOpacity="0.02" />
-            <stop offset="1" stopColor="#fb7185" stopOpacity="0.35" />
-          </linearGradient>
         </defs>
 
         {model.ticks.map((t) => (
           <g key={t}>
-            <line x1={model.sx(t)} x2={model.sx(t)} y1={PAD.t} y2={H - PAD.b} stroke="rgba(255,255,255,0.04)" />
-            <text x={model.sx(t)} y={H - 6} textAnchor="middle" className="fill-faint text-[13px]" style={{ fontFamily: "var(--font-mono)" }}>
+            <line x1={model.sx(t)} x2={model.sx(t)} y1={PAD.t} y2={H - PAD.b} style={{ stroke: "var(--line)" }} />
+            <text x={model.sx(t)} y={H - 8} textAnchor="middle" className="fill-faint text-[13px]" style={mono}>
               {fmtPrice(t, t >= 100 ? 0 : 2)}
             </text>
           </g>
         ))}
 
-        <path data-area d={model.expArea} fill={`url(#gu${uid})`} clipPath={`url(#up${uid})`} />
-        <path data-area d={model.expArea} fill={`url(#gd${uid})`} clipPath={`url(#dn${uid})`} />
-        <line x1={PAD.l} x2={W - PAD.r} y1={model.y0} y2={model.y0} stroke="rgba(255,255,255,0.18)" strokeDasharray="3 4" />
+        <path data-area d={model.expArea} style={{ fill: "var(--up)", fillOpacity: 0.08 }} clipPath={`url(#up${uid})`} />
+        <path data-area d={model.expArea} style={{ fill: "var(--down)", fillOpacity: 0.08 }} clipPath={`url(#dn${uid})`} />
+        <line x1={PAD.l} x2={W - PAD.r} y1={model.y0} y2={model.y0} style={{ stroke: "var(--line-strong)" }} />
 
-        <path data-now d={model.halfPath} fill="none" stroke="#8b7bff" strokeOpacity="0.45" strokeWidth="1.2" strokeDasharray="2 4" />
-        <path data-now d={model.nowPath} fill="none" stroke="#38e1ff" strokeWidth="1.6" strokeDasharray="6 5" />
-        <path data-exp d={model.expPath} fill="none" stroke="#34d399" strokeWidth="2.4" strokeLinejoin="round" clipPath={`url(#up${uid})`} />
-        <path data-exp d={model.expPath} fill="none" stroke="#fb7185" strokeWidth="2.4" strokeLinejoin="round" clipPath={`url(#dn${uid})`} />
+        <path data-now d={model.halfPath} fill="none" strokeWidth="1.2" strokeDasharray="2 4" style={{ stroke: "var(--faint)" }} />
+        <path data-now d={model.nowPath} fill="none" strokeWidth="1.5" strokeDasharray="5 4" style={{ stroke: "var(--accent)" }} />
+        <path data-exp d={model.expPath} fill="none" strokeWidth="2" strokeLinejoin="round" style={{ stroke: "var(--up)" }} clipPath={`url(#up${uid})`} />
+        <path data-exp d={model.expPath} fill="none" strokeWidth="2" strokeLinejoin="round" style={{ stroke: "var(--down)" }} clipPath={`url(#dn${uid})`} />
 
-        <line x1={model.sx(market.spot)} x2={model.sx(market.spot)} y1={PAD.t} y2={H - PAD.b} stroke="rgba(255,255,255,0.35)" />
-        <text x={model.sx(market.spot) + 6} y={PAD.t + 12} className="fill-muted text-[13px]" style={{ fontFamily: "var(--font-mono)" }}>
-          spot {fmtPrice(market.spot)}
+        <line x1={model.sx(market.spot)} x2={model.sx(market.spot)} y1={PAD.t} y2={H - PAD.b} strokeDasharray="3 3" style={{ stroke: "var(--muted)" }} />
+        <text x={model.sx(market.spot) + 6} y={PAD.t + 10} className="fill-muted text-[13px]" style={mono}>
+          Spot {fmtPrice(market.spot)}
         </text>
 
         {breakevens
           .filter((b) => b > model.lo && b < model.hi)
           .map((b) => (
-            <g key={b}>
-              <circle cx={model.sx(b)} cy={model.y0} r="4.5" fill="#05060a" stroke="#fbbf24" strokeWidth="2" />
-            </g>
+            <circle key={b} cx={model.sx(b)} cy={model.y0} r="4" strokeWidth="2" style={{ fill: "var(--surface)", stroke: "var(--ink)" }} />
           ))}
 
         {hi != null && (
           <g pointerEvents="none">
-            <line x1={model.sx(model.xs[hi])} x2={model.sx(model.xs[hi])} y1={PAD.t} y2={H - PAD.b} stroke="rgba(139,123,255,0.6)" strokeDasharray="3 3" />
-            <circle cx={model.sx(model.xs[hi])} cy={model.sy(model.exp[hi])} r="4" fill={model.exp[hi] >= 0 ? "#34d399" : "#fb7185"} />
-            <circle cx={model.sx(model.xs[hi])} cy={model.sy(model.now[hi])} r="3.5" fill="#38e1ff" />
+            <line x1={model.sx(model.xs[hi])} x2={model.sx(model.xs[hi])} y1={PAD.t} y2={H - PAD.b} style={{ stroke: "var(--line-strong)" }} />
+            <circle cx={model.sx(model.xs[hi])} cy={model.sy(model.exp[hi])} r="4" style={{ fill: model.exp[hi] >= 0 ? "var(--up)" : "var(--down)" }} />
+            <circle cx={model.sx(model.xs[hi])} cy={model.sy(model.now[hi])} r="3.5" style={{ fill: "var(--accent)" }} />
           </g>
         )}
       </svg>
 
       {hi != null && (
         <div
-          className="pointer-events-none absolute top-2 rounded-lg border border-line bg-[#0d0f18]/95 px-3 py-2 text-[11px] shadow-xl backdrop-blur"
+          className="pointer-events-none absolute top-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-md"
           style={{ left: `clamp(8px, calc(${(model.sx(model.xs[hi]) / W) * 100}% + 12px), calc(100% - 170px))` }}
         >
-          <p className="text-faint">
-            Underlying <span className="num text-ink">${fmtPrice(model.xs[hi])}</span>
+          <p className="text-muted">
+            Underlying <span className="num font-medium text-ink">${fmtPrice(model.xs[hi])}</span>
           </p>
-          <p className="text-faint">
-            At expiry <span className={`num ${model.exp[hi] >= 0 ? "text-up" : "text-down"}`}>{fmtUsd(model.exp[hi], 0)}</span>
+          <p className="text-muted">
+            At expiry <span className={`num font-medium ${model.exp[hi] >= 0 ? "text-up" : "text-down"}`}>{fmtUsd(model.exp[hi], 0)}</span>
           </p>
-          <p className="text-faint">
-            Today <span className="num text-accent-2">{fmtUsd(model.now[hi], 0)}</span>
+          <p className="text-muted">
+            Today <span className="num font-medium text-accent">{fmtUsd(model.now[hi], 0)}</span>
           </p>
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-muted">
+      <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted">
         <span className="flex items-center gap-1.5">
           <span className="h-0.5 w-4 rounded bg-up" /> At expiry
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded border-t border-dashed border-accent-2" /> Today
+          <span className="w-4 border-t-2 border-dashed border-accent" /> Today
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded border-t border-dotted border-accent" /> Halfway to expiry
+          <span className="w-4 border-t-2 border-dotted border-faint" /> Halfway
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full border-2 border-warn" /> Breakeven
+          <span className="size-2 rounded-full border-2 border-ink" /> Breakeven
         </span>
       </div>
     </div>

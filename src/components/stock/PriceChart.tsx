@@ -10,7 +10,6 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
-  type IChartApi,
   type ISeriesApi,
   type SeriesType,
   type Time,
@@ -19,15 +18,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isoDate } from "@/lib/dates";
 import { fmtCompact, fmtDate, fmtPct, fmtPrice } from "@/lib/format";
 import { gsap, prefersReducedMotion } from "@/lib/client/gsap";
+import { alpha, tokens, useTheme } from "@/lib/client/theme";
 import { Segmented } from "../ui/Segmented";
 
 type BarTuple = readonly [number, number, number, number, number, number];
 type Range = "1M" | "3M" | "6M" | "YTD" | "1Y" | "ALL";
 type Mode = "area" | "candles";
 
-const UP = "#34d399";
-const DOWN = "#fb7185";
-const SMA_COLORS: Record<number, string> = { 20: "#fbbf24", 50: "#38e1ff", 200: "#f472b6" };
+const SMA_TOKEN: Record<number, "warn" | "accent" | "muted"> = { 20: "warn", 50: "accent", 200: "muted" };
 
 function sma(values: number[], n: number): (number | null)[] {
   const out: (number | null)[] = [];
@@ -51,7 +49,7 @@ function rangeStart(range: Range, lastDate: string): string | null {
 
 export function PriceChart({ bars, historyYears }: { bars: BarTuple[]; historyYears: number }) {
   const holder = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
+  const { theme } = useTheme();
   const [range, setRange] = useState<Range>("1Y");
   const [mode, setMode] = useState<Mode>("area");
   const [smas, setSmas] = useState<number[]>([50]);
@@ -79,50 +77,50 @@ export function PriceChart({ bars, historyYears }: { bars: BarTuple[]; historyYe
   useEffect(() => {
     const el = holder.current;
     if (!el || !visible.length) return;
+    const t = tokens();
+    const color = positive ? t.up : t.down;
 
     const chart = createChart(el, {
       autoSize: true,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#8d93a6",
-        fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+        textColor: t.faint,
+        fontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
         fontSize: 11,
         attributionLogo: true,
       },
-      grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,0.04)" } },
-      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.22 } },
+      grid: { vertLines: { visible: false }, horzLines: { color: t.line } },
+      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.1, bottom: 0.22 } },
       timeScale: { borderVisible: false, fixLeftEdge: true, fixRightEdge: true },
       crosshair: {
         mode: CrosshairMode.Magnet,
-        vertLine: { color: "rgba(139,123,255,0.5)", width: 1, style: LineStyle.Dashed, labelBackgroundColor: "#2a2550" },
-        horzLine: { color: "rgba(139,123,255,0.35)", width: 1, style: LineStyle.Dashed, labelBackgroundColor: "#2a2550" },
+        vertLine: { color: t.lineStrong, width: 1, style: LineStyle.Solid, labelBackgroundColor: t.muted },
+        horzLine: { color: t.lineStrong, width: 1, style: LineStyle.Dashed, labelBackgroundColor: t.muted },
       },
       handleScroll: false,
       handleScale: false,
     });
-    chartRef.current = chart;
-    const color = positive ? UP : DOWN;
 
     let main: ISeriesApi<SeriesType>;
     if (mode === "area") {
       main = chart.addSeries(AreaSeries, {
         lineColor: color,
         lineWidth: 2,
-        topColor: positive ? "rgba(52,211,153,0.28)" : "rgba(251,113,133,0.28)",
-        bottomColor: "rgba(0,0,0,0)",
+        topColor: alpha(color, theme === "dark" ? 0.16 : 0.12),
+        bottomColor: alpha(color, 0),
         priceLineVisible: false,
-        crosshairMarkerRadius: 5,
-        crosshairMarkerBorderColor: "#05060a",
+        crosshairMarkerRadius: 4,
+        crosshairMarkerBorderColor: t.surface,
         crosshairMarkerBackgroundColor: color,
       });
       main.setData(visible.map((b) => ({ time: b.date as Time, value: b.c })));
     } else {
       main = chart.addSeries(CandlestickSeries, {
-        upColor: UP,
-        downColor: DOWN,
+        upColor: t.up,
+        downColor: t.down,
         borderVisible: false,
-        wickUpColor: UP,
-        wickDownColor: DOWN,
+        wickUpColor: t.up,
+        wickDownColor: t.down,
         priceLineVisible: false,
       });
       main.setData(visible.map((b) => ({ time: b.date as Time, open: b.o, high: b.h, low: b.l, close: b.c })));
@@ -134,13 +132,13 @@ export function PriceChart({ bars, historyYears }: { bars: BarTuple[]; historyYe
       visible.map((b, i) => ({
         time: b.date as Time,
         value: b.v,
-        color: (i === 0 ? b.c >= b.o : b.c >= visible[i - 1].c) ? "rgba(52,211,153,0.28)" : "rgba(251,113,133,0.28)",
+        color: alpha((i === 0 ? b.c >= b.o : b.c >= visible[i - 1].c) ? t.up : t.down, 0.28),
       })),
     );
 
     for (const n of smas) {
       const line = chart.addSeries(LineSeries, {
-        color: SMA_COLORS[n],
+        color: t[SMA_TOKEN[n]] || t.muted,
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
@@ -162,17 +160,13 @@ export function PriceChart({ bars, historyYears }: { bars: BarTuple[]; historyYe
     });
 
     if (!prefersReducedMotion()) {
-      gsap.fromTo(el, { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.4, ease: "expo.inOut" });
+      gsap.fromTo(el, { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.8, ease: "power2.inOut" });
     }
-
-    return () => {
-      chart.remove();
-      chartRef.current = null;
-    };
-  }, [visible, mode, smas, positive, smaSeries, startIdx]);
+    return () => chart.remove();
+  }, [visible, mode, smas, positive, smaSeries, startIdx, theme]);
 
   const shown = hover ?? (last ? { date: last.date, o: last.o, h: last.h, l: last.l, c: last.c, v: last.v } : null);
-  const ranges: { value: Range; label: string; disabled?: boolean }[] = [
+  const ranges: { value: Range; label: string }[] = [
     { value: "1M", label: "1M" },
     { value: "3M", label: "3M" },
     { value: "6M", label: "6M" },
@@ -187,45 +181,47 @@ export function PriceChart({ bars, historyYears }: { bars: BarTuple[]; historyYe
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           {shown && (
             <>
-              <span className="text-muted">{fmtDate(shown.date)}</span>
+              <span className="font-medium text-ink">{fmtDate(shown.date)}</span>
               {(["o", "h", "l", "c"] as const).map((k) => (
                 <span key={k} className="text-faint">
-                  {k.toUpperCase()} <span className="num text-ink">{fmtPrice(shown[k])}</span>
+                  {k.toUpperCase()} <span className="num text-muted">{fmtPrice(shown[k])}</span>
                 </span>
               ))}
               <span className="text-faint">
-                Vol <span className="num text-ink">{fmtCompact(shown.v)}</span>
+                Vol <span className="num text-muted">{fmtCompact(shown.v)}</span>
               </span>
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className={clsx("num text-sm font-medium", positive ? "text-up" : "text-down")}>
-            {fmtPct(rangeRet)} <span className="text-xs font-normal text-faint">{range === "ALL" ? "all" : range}</span>
-          </span>
-        </div>
+        <span className={clsx("num text-sm font-medium", positive ? "text-up" : "text-down")}>
+          {fmtPct(rangeRet)} <span className="text-xs font-normal text-faint">{range === "ALL" ? "all" : range}</span>
+        </span>
       </div>
 
-      <div ref={holder} className="relative mt-3 h-[360px] w-full sm:h-[420px]" />
+      <div ref={holder} className="relative mt-3 h-[340px] w-full sm:h-[400px]" />
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <Segmented<Range> value={range} onChange={setRange} options={ranges} />
-        <div className="flex items-center gap-2">
-          {[20, 50, 200].map((n) => (
-            <button
-              key={n}
-              onClick={() => setSmas((s) => (s.includes(n) ? s.filter((x) => x !== n) : [...s, n]))}
-              className={clsx("chip transition-colors", smas.includes(n) ? "text-ink" : "opacity-60 hover:opacity-100")}
-              style={smas.includes(n) ? { borderColor: SMA_COLORS[n] + "66", color: SMA_COLORS[n] } : undefined}
-            >
-              SMA {n}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5">
+          {[20, 50, 200].map((n) => {
+            const on = smas.includes(n);
+            return (
+              <button
+                key={n}
+                onClick={() => setSmas((s) => (on ? s.filter((x) => x !== n) : [...s, n]))}
+                className={clsx("chip transition-colors", on ? "border-line-strong text-ink" : "hover:text-ink")}
+              >
+                <span className={clsx("size-1.5 rounded-full", on ? { 20: "bg-warn", 50: "bg-accent", 200: "bg-muted" }[n] : "bg-line-strong")} />
+                SMA {n}
+              </button>
+            );
+          })}
           <Segmented<Mode>
+            className="ml-1"
             value={mode}
             onChange={setMode}
             options={[
-              { value: "area", label: "Area" },
+              { value: "area", label: "Line" },
               { value: "candles", label: "Candles" },
             ]}
           />

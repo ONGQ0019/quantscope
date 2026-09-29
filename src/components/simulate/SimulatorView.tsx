@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Lock, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { Lock, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { addDays, addMonths, nyToday } from "@/lib/dates";
@@ -103,8 +103,8 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
       {!embedded && (
         <div className="mb-8">
           <p className="label">Simulator</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
-            What if you had <span className="text-gradient">invested?</span>
+          <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-[40px]">
+            What if you had invested?
           </h1>
           <p className="mt-3 max-w-2xl text-muted">
             Replay any stock or ETF with real prices, split-adjusted dividends and optional monthly contributions — then compare against the market.
@@ -121,7 +121,7 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
               <MoneyInput value={initial} onChange={setInitial} />
               <div className="mt-2 flex gap-1.5">
                 {[1_000, 10_000, 100_000].map((v) => (
-                  <button key={v} onClick={() => setInitial(v)} className={clsx("chip hover:text-ink", initial === v && "border-accent/40 text-ink")}>
+                  <button key={v} onClick={() => setInitial(v)} className={clsx("chip transition-colors hover:text-ink", initial === v && "border-line-strong text-ink")}>
                     ${v.toLocaleString()}
                   </button>
                 ))}
@@ -157,7 +157,7 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
                       }}
                       className={clsx(
                         "flex items-center justify-center gap-1 rounded-lg border py-1.5 text-xs transition-colors",
-                        active ? "border-accent/50 bg-accent/15 text-ink" : "border-line text-muted hover:text-ink",
+                        active ? "border-ink bg-ink text-bg" : "border-line text-muted hover:bg-subtle hover:text-ink",
                         locked && "cursor-not-allowed opacity-40 hover:text-muted",
                       )}
                     >
@@ -173,7 +173,7 @@ export function SimulatorView({ initialTicker, embedded = false }: { initialTick
                 min={addDays(nyToday(), -Math.round(historyYears * 365.25) + 3)}
                 max={addDays(nyToday(), -7)}
                 onChange={(e) => e.target.value && setCustomStart(e.target.value)}
-                className="input num mt-2 [color-scheme:dark]"
+                className="input num mt-2"
               />
             </Field>
 
@@ -264,13 +264,12 @@ function Headline({ data, loading }: { data: SimulationResponse; loading: boolea
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      gsap.from("[data-hl]", { opacity: 0, y: 14, stagger: 0.08, duration: 1, ease: "expo.out" });
+      gsap.from("[data-hl]", { opacity: 0, y: 6, stagger: 0.06, duration: 0.5, ease: "power2.out" });
     },
     { scope: ref, dependencies: [data.ticker] },
   );
   return (
-    <section ref={ref} className="glass relative overflow-hidden p-6 sm:p-8">
-      <div className={clsx("absolute -top-32 -right-24 size-80 rounded-full blur-3xl", up ? "bg-up/20" : "bg-down/20")} />
+    <section ref={ref} className="card p-6 sm:p-7">
       <div className={clsx("relative transition-opacity", loading && "opacity-60")}>
         <div data-hl className="flex items-center gap-3">
           <TickerLogo ticker={data.ticker} size={40} />
@@ -294,8 +293,7 @@ function Headline({ data, loading }: { data: SimulationResponse; loading: boolea
               {up ? "+" : ""}
               {fmtUsd(r.profit, 0)}
             </span>
-            <span className={clsx("chip num ml-2 !text-sm", up ? "pill-up" : "pill-down")}>
-              {up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+            <span className={clsx("chip num ml-2 h-7 px-2 text-sm", up ? "pill-up" : "pill-down")}>
               {fmtPct(r.totalReturn)}
             </span>
           </div>
@@ -317,7 +315,7 @@ function VersusBenchmark({ data }: { data: SimulationResponse }) {
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      gsap.from("[data-vs]", { scaleX: 0, transformOrigin: "left", duration: 1.6, stagger: 0.15, ease: "expo.out" });
+      gsap.from("[data-vs]", { scaleX: 0, transformOrigin: "left", duration: 0.8, stagger: 0.08, ease: "power3.out" });
     },
     { scope: ref, dependencies: [r.finalValue, b.finalValue] },
   );
@@ -332,8 +330,8 @@ function VersusBenchmark({ data }: { data: SimulationResponse }) {
     >
       <div ref={ref} className="space-y-3">
         {[
-          { t: data.ticker, v: r.finalValue, ret: r.totalReturn, cls: r.totalReturn >= b.totalReturn ? "from-up/70 to-up" : "from-accent/60 to-accent" },
-          { t: data.benchmark!, v: b.finalValue, ret: b.totalReturn, cls: "from-white/20 to-white/40" },
+          { t: data.ticker, v: r.finalValue, ret: r.totalReturn, cls: r.profit >= 0 ? "bg-up" : "bg-down" },
+          { t: data.benchmark!, v: b.finalValue, ret: b.totalReturn, cls: "bg-accent" },
         ].map((x) => (
           <div key={x.t}>
             <div className="mb-1 flex justify-between text-xs">
@@ -342,8 +340,8 @@ function VersusBenchmark({ data }: { data: SimulationResponse }) {
                 {fmtUsd(x.v, 0)} <span className={x.ret >= 0 ? "text-up" : "text-down"}>({fmtPct(x.ret)})</span>
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-white/[0.05]">
-              <div data-vs className={clsx("h-full rounded-full bg-gradient-to-r", x.cls)} style={{ width: `${(x.v / max) * 100}%` }} />
+            <div className="h-2 overflow-hidden rounded-full bg-subtle">
+              <div data-vs className={clsx("h-full rounded-full", x.cls)} style={{ width: `${(x.v / max) * 100}%` }} />
             </div>
           </div>
         ))}
@@ -369,7 +367,7 @@ function YearlyReturns({
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      gsap.from("[data-yr]", { scaleX: 0, duration: 1.2, stagger: 0.04, ease: "expo.out" });
+      gsap.from("[data-yr]", { scaleX: 0, duration: 0.7, stagger: 0.03, ease: "power3.out" });
     },
     { scope: ref, dependencies: [main.length, ticker] },
   );
@@ -387,7 +385,17 @@ function YearlyReturns({
           </div>
         );
       })}
-      <p className="text-[11px] text-faint">Partial years are measured from the start date / to the latest close.</p>
+      <div className="flex flex-wrap items-center gap-4 pt-1 text-[11px] text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-sm bg-up" /> {ticker}
+        </span>
+        {benchTicker && (
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-sm bg-accent" /> {benchTicker}
+          </span>
+        )}
+        <span className="text-faint">Partial years run from the start date or to the latest close.</span>
+      </div>
     </div>
   );
 }
@@ -396,13 +404,13 @@ function BarRow({ value, max, label, strong }: { value: number; max: number; lab
   const w = (Math.abs(value) / max) * 38; // leave room for the label
   return (
     <div className="relative flex h-4 items-center" title={`${label}: ${fmtPct(value)}`}>
-      <div className="absolute inset-y-0 left-1/2 w-px bg-white/10" />
+      <div className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
       <div
         data-yr
-        className={clsx("absolute h-2.5 rounded-sm", value >= 0 ? "bg-up" : "bg-down", !strong && "opacity-35")}
+        className={clsx("absolute h-2 rounded-sm", strong ? (value >= 0 ? "bg-up" : "bg-down") : "bg-accent")}
         style={value >= 0 ? { left: "50%", width: `${w}%`, transformOrigin: "left" } : { right: "50%", width: `${w}%`, transformOrigin: "right" }}
       />
-      <span className={clsx("num absolute text-[10px]", value >= 0 ? "text-up" : "text-down", !strong && "opacity-60")} style={value >= 0 ? { left: `calc(50% + ${w}% + 6px)` } : { right: `calc(50% + ${w}% + 6px)` }}>
+      <span className={clsx("num absolute text-[10px]", strong ? (value >= 0 ? "text-up" : "text-down") : "text-accent")} style={value >= 0 ? { left: `calc(50% + ${w}% + 6px)` } : { right: `calc(50% + ${w}% + 6px)` }}>
         {fmtPct(value, 1)}
       </span>
     </div>
@@ -411,7 +419,7 @@ function BarRow({ value, max, label, strong }: { value: number; max: number; lab
 
 function Kpi({ label, value, fmt, tone, sub }: { label: string; value: number | null; fmt: (n: number) => string; tone?: number | null; sub?: string }) {
   return (
-    <div data-reveal className="glass !rounded-2xl px-4 py-3">
+    <div data-reveal className="card px-4 py-3">
       <p className="label">{label}</p>
       <AnimatedNumber
         value={value}
@@ -504,14 +512,14 @@ function TickerPicker({ value, onChange }: { value: string; onChange: (t: string
           />
         </div>
         {open && hits.length > 0 && (
-          <div className="glass absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden !rounded-xl !bg-[#0c0e17]/95 p-1">
+          <div className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-lg border border-line bg-surface p-1 shadow-lg">
             {hits.map((h, i) => (
               <button
                 key={h.ticker}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(h.ticker)}
                 onMouseMove={() => setActive(i)}
-                className={clsx("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left", i === active && "bg-white/[0.07]")}
+                className={clsx("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left", i === active && "bg-subtle")}
               >
                 <span className="w-14 text-sm font-semibold">{h.ticker}</span>
                 <span className="truncate text-xs text-muted">{h.name}</span>

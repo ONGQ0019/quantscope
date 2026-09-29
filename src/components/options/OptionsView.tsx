@@ -49,13 +49,11 @@ export function OptionsView({ ticker }: { ticker: string }) {
   return (
     <Reveal className="space-y-4" deps={[Boolean(exps), Boolean(chain)]}>
       {chain && chain.mode === "model" && (
-        <div data-reveal className="flex items-start gap-3 rounded-2xl border border-warn/20 bg-warn/[0.05] px-4 py-3 text-sm">
-          <Info className="mt-0.5 size-4 shrink-0 text-warn" />
+        <div data-reveal className="flex items-start gap-3 rounded-lg border border-line bg-subtle px-4 py-3 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0 text-muted" />
           <p className="text-muted">
-            <span className="font-medium text-ink">Model chain.</span> Your Massive plan includes the full contract list but not live option quotes, so prices
-            and greeks are Black-Scholes values using {ticker}&apos;s 30-day historical volatility ({fmtPct(chain.hv30, 1, false)}) and the{" "}
-            {chain.rSource}. Use <span className="text-ink">“Use last trade”</span> on any leg for its real last close. An Options plan unlocks live bid/ask,
-            IV, greeks and open interest automatically.
+            <span className="font-medium text-ink">Model prices.</span> Your data plan has no live option quotes, so prices and greeks use Black-Scholes with{" "}
+            {ticker}&apos;s 30-day volatility ({fmtPct(chain.hv30, 1, false)}). “Use last trade” on a leg pulls its real close.
           </p>
         </div>
       )}
@@ -82,7 +80,7 @@ export function OptionsView({ ticker }: { ticker: string }) {
       </div>
 
       <div data-reveal>
-        {exps ? <ExpirationStrip expirations={exps.expirations} value={selectedExp} onChange={pickExp} /> : <Skeleton className="h-[62px] w-full !rounded-2xl" />}
+        {exps ? <ExpirationStrip expirations={exps.expirations} value={selectedExp} onChange={pickExp} /> : <Skeleton className="h-[62px] w-full" />}
       </div>
 
       <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_440px] xl:grid-cols-[minmax(0,1fr)_400px]">
@@ -91,7 +89,7 @@ export function OptionsView({ ticker }: { ticker: string }) {
           title={
             <span className="flex items-center gap-2">
               Option chain
-              <span className={clsx("chip !py-0 !text-[10px]", live ? "pill-up" : "border-warn/25 text-warn/90")}>
+              <span className={clsx("chip", live && "pill-up")}>
                 <span className={clsx("size-1.5 rounded-full", live ? "bg-up" : "bg-warn")} />
                 {live ? "Live" : "Model"}
               </span>
@@ -146,7 +144,7 @@ export function OptionsView({ ticker }: { ticker: string }) {
 
 function Kpi({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
-    <div className="glass !rounded-2xl px-4 py-3">
+    <div className="card px-4 py-3">
       <p className="label">{label}</p>
       <div className="num mt-1.5 text-lg font-semibold">{value ?? <Skeleton className="h-6 w-20" />}</div>
       {sub && <p className="mt-0.5 truncate text-[11px] text-faint">{sub}</p>}
@@ -174,30 +172,30 @@ function ExpirationStrip({
     if (first.current) {
       gsap.set(pill.current, props);
       first.current = false;
-    } else gsap.to(pill.current, { ...props, duration: 0.55, ease: "expo.out" });
+    } else gsap.to(pill.current, { ...props, duration: 0.35, ease: "power3.out" });
   }, [value, expirations.length]);
 
   useEffect(() => {
     const sc = scroller.current;
     const el = value ? sc?.querySelector<HTMLElement>(`[data-exp="${value}"]`) : null;
-    if (sc && el) gsap.to(sc, { scrollLeft: el.offsetLeft - sc.clientWidth / 2 + el.offsetWidth / 2, duration: 0.8, ease: "expo.out" });
+    if (sc && el) gsap.to(sc, { scrollLeft: el.offsetLeft - sc.clientWidth / 2 + el.offsetWidth / 2, duration: 0.5, ease: "power3.out" });
   }, [value]);
 
   const nudge = (dir: 1 | -1) => {
     const sc = scroller.current;
-    if (sc) gsap.to(sc, { scrollLeft: sc.scrollLeft + dir * sc.clientWidth * 0.7, duration: 0.7, ease: "expo.out" });
+    if (sc) gsap.to(sc, { scrollLeft: sc.scrollLeft + dir * sc.clientWidth * 0.7, duration: 0.5, ease: "power3.out" });
   };
 
-  if (!expirations.length) return <p className="glass px-4 py-4 text-sm text-muted">No listed options for this ticker.</p>;
+  if (!expirations.length) return <p className="card px-4 py-4 text-sm text-muted">No listed options for this ticker.</p>;
 
   return (
-    <div className="glass flex items-center gap-1 !rounded-2xl p-1.5">
-      <button onClick={() => nudge(-1)} className="grid size-9 shrink-0 place-items-center rounded-xl text-muted hover:bg-white/5 hover:text-ink" aria-label="Earlier">
+    <div className="card flex items-center gap-1 p-1.5">
+      <button onClick={() => nudge(-1)} className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" aria-label="Earlier">
         <ChevronLeft className="size-4" />
       </button>
       <div ref={scroller} className="no-scrollbar relative flex-1 overflow-x-auto">
         <div className="relative flex w-max gap-1">
-          <div ref={pill} className="absolute inset-y-0 left-0 rounded-xl border border-accent/40 bg-gradient-to-b from-accent/25 to-accent/10 opacity-0 shadow-[0_0_24px_-6px_rgb(139_123_255/0.7)]" />
+          <div ref={pill} className="absolute inset-y-0 left-0 rounded-lg bg-ink opacity-0" />
           {expirations.map((e, i) => {
             const newMonth = i > 0 && e.date.slice(0, 7) !== expirations[i - 1].date.slice(0, 7);
             return (
@@ -206,20 +204,20 @@ function ExpirationStrip({
                 data-exp={e.date}
                 onClick={() => onChange(e.date)}
                 className={clsx(
-                  "relative z-10 flex min-w-[64px] flex-col items-center rounded-xl px-3 py-1.5 transition-colors",
-                  e.date === value ? "text-ink" : "text-muted hover:bg-white/[0.04] hover:text-ink",
+                  "relative z-10 flex min-w-[60px] flex-col items-center rounded-lg px-3 py-1.5 transition-colors",
+                  e.date === value ? "text-bg" : "text-muted hover:bg-subtle hover:text-ink",
                   newMonth && "ml-2",
                 )}
               >
-                <span className="text-[10px] tracking-wider text-faint uppercase">{fmtDate(e.date, { month: "short" })}</span>
+                <span className={clsx("text-[10px]", e.date === value ? "text-bg/70" : "text-faint")}>{fmtDate(e.date, { month: "short" })}</span>
                 <span className="num text-sm font-semibold">{Number(e.date.slice(8, 10))}</span>
-                <span className="num text-[10px] text-faint">{e.dte}d</span>
+                <span className={clsx("num text-[10px]", e.date === value ? "text-bg/70" : "text-faint")}>{e.dte}d</span>
               </button>
             );
           })}
         </div>
       </div>
-      <button onClick={() => nudge(1)} className="grid size-9 shrink-0 place-items-center rounded-xl text-muted hover:bg-white/5 hover:text-ink" aria-label="Later">
+      <button onClick={() => nudge(1)} className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" aria-label="Later">
         <ChevronRight className="size-4" />
       </button>
     </div>

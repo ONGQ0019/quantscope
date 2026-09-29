@@ -8,7 +8,7 @@ export function AnimatedNumber({
   value,
   format,
   className,
-  duration = 1.4,
+  duration = 0.9,
   from,
 }: {
   value: number | null | undefined;
@@ -37,7 +37,7 @@ export function AnimatedNumber({
     const tween = gsap.to(state.current, {
       v: value,
       duration,
-      ease: "expo.out",
+      ease: "power3.out",
       onUpdate: () => {
         el.textContent = fmt.current(state.current!.v);
       },

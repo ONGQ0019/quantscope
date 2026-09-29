@@ -3,9 +3,11 @@
 import { SWRConfig } from "swr";
 import type { ReactNode } from "react";
 import { ApiError, fetcher } from "@/lib/client/fetcher";
+import { useSystemThemeSync } from "@/lib/client/theme";
 import { CommandPaletteProvider } from "./CommandPalette";
 
 export function Providers({ children }: { children: ReactNode }) {
+  useSystemThemeSync();
   return (
     <SWRConfig
       value={{
