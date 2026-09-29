@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #05060a;
+  --color-bg-2: #0a0c14;
+  --color-ink: #eceef4;
+  --color-muted: #8d93a6;
+  --color-faint: #5c6276;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-strong: rgb(255 255 255 / 0.14);
+  --color-up: #34d399;
+  --color-down: #fb7185;
+  --color-warn: #fbbf24;
+  --color-accent: #8b7bff;
+  --color-accent-2: #38e1ff;
+  --color-accent-3: #f472b6;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --radius-panel: 20px;
+}
+
+@layer base {
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgb(139 123 255 / 0.35);
+  color: white;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.12) transparent;
+}
+}
+
+@layer components {
+/* ---------- Ambient backdrop ---------- */
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ambient .blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+}
+
+.noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- Surfaces ---------- */
+
+.glass {
+  position: relative;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.018));
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 20px 60px -30px rgb(0 0 0 / 0.8);
+}
+
+/* Mouse-following glow; --mx/--my/--spot-o are set by the useSpotlight hook */
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--spot-o, 0);
+  transition: opacity 0.4s var(--ease-out-expo);
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 50%),
+    rgb(139 123 255 / 0.13),
+    transparent 45%
+  );
+}
+
+.hairline {
+  background: linear-gradient(90deg, transparent, var(--color-line-strong), transparent);
+  height: 1px;
+}
+
+/* ---------- Type ---------- */
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.text-gradient {
+  background: linear-gradient(100deg, #ffffff 0%, #c9c2ff 35%, var(--color-accent-2) 75%, #a7f3d0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(100deg, var(--color-accent), var(--color-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+  font-weight: 500;
+}
+
+/* ---------- Controls ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 12px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--color-line);
+  background: rgb(255 255 255 / 0.04);
+  transition:
+    background 0.25s,
+    border-color 0.25s;
+}
+.btn:hover {
+  background: rgb(255 255 255 / 0.08);
+  border-color: var(--color-line-strong);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  border-color: transparent;
+  background: linear-gradient(100deg, var(--color-accent), #6a8bff 55%, var(--color-accent-2));
+  color: #07080f;
+  font-weight: 600;
+  box-shadow: 0 8px 30px -8px rgb(139 123 255 / 0.6);
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+  border-color: transparent;
+  background: linear-gradient(100deg, var(--color-accent), #6a8bff 55%, var(--color-accent-2));
+}
+
+.input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--color-line);
+  background: rgb(0 0 0 / 0.25);
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.input:focus {
+  border-color: rgb(139 123 255 / 0.6);
+  box-shadow: 0 0 0 4px rgb(139 123 255 / 0.12);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-line);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.pill-up {
+  color: var(--color-up);
+  background: rgb(52 211 153 / 0.1);
+  border-color: rgb(52 211 153 / 0.25);
+}
+.pill-down {
+  color: var(--color-down);
+  background: rgb(251 113 133 / 0.1);
+  border-color: rgb(251 113 133 / 0.25);
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  border: 1px solid var(--color-line-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 0.05rem 0.35rem;
+  color: var(--color-muted);
+  background: rgb(255 255 255 / 0.04);
+}
+
+/* ---------- Loading ---------- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.05);
+  border-radius: 10px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
+  animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ---------- Tables ---------- */
+
+.row-hover {
+  transition: background 0.15s;
+}
+.row-hover:hover {
+  background: rgb(255 255 255 / 0.035);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* lightweight-charts attribution logo: keep it but make it subtle */
+#tv-attr-logo {
+  opacity: 0.35;
+}
+}
